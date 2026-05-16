@@ -2,7 +2,7 @@
   "title": "Claude Code — Overview",
   "uid": "claude-overview",
   "schemaVersion": 39,
-  "version": 16,
+  "version": 17,
   "refresh": "10s",
   "time": { "from": "now-6h", "to": "now" },
   "annotations": {
@@ -159,10 +159,18 @@
 
     { "id": 17, "type": "bargauge", "title": "Avg api_request duration per skill turn (last 24h)",
       "description": "From the correlator: sum of api_request duration_ms divided by number of turns, per skill. Cross-session.",
-      "gridPos": { "x": 0, "y": 52, "w": 24, "h": 6 },
+      "gridPos": { "x": 0, "y": 52, "w": 12, "h": 6 },
       "datasource": { "type": "prometheus", "uid": "Prometheus" },
       "targets": [ { "expr": "sum by (skill) (claude_code_skill_duration_ms) / sum by (skill) (claude_code_skill_turns)", "legendFormat": "{{skill}}", "refId": "A" } ],
       "fieldConfig": { "defaults": { "unit": "ms", "decimals": 0, "noValue": "Correlator has not published yet." } },
+      "options": { "reduceOptions": { "calc": "lastNotNull", "fields": "", "values": false }, "orientation": "horizontal", "displayMode": "gradient" } },
+
+    { "id": 18, "type": "bargauge", "title": "Avg tokens per skill invocation (last 24h)",
+      "description": "From the correlator: total tokens divided by number of times you invoked the skill. Useful for skill ROI — '/judge-knowledge costs me ~50k tokens each use'.",
+      "gridPos": { "x": 12, "y": 52, "w": 12, "h": 6 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [ { "expr": "sum by (skill) (claude_code_skill_tokens) / sum by (skill) (claude_code_skill_invocations)", "legendFormat": "{{skill}}", "refId": "A" } ],
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "noValue": "Correlator has not published yet." } },
       "options": { "reduceOptions": { "calc": "lastNotNull", "fields": "", "values": false }, "orientation": "horizontal", "displayMode": "gradient" } },
 
     { "id": 106, "type": "row", "title": "Raw events", "collapsed": true,
