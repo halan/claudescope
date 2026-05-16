@@ -222,6 +222,17 @@ docker compose down          # stops containers, keeps data
 docker compose down -v       # also removes volumes (wipes everything)
 ```
 
+## Roadmap
+
+Tracked as GitHub Issues, grouped by phase:
+
+- [Phase 1 — Polish the Overview](https://github.com/halan/claudescope/issues?q=is%3Aissue+is%3Aopen+label%3Aphase-1)
+- [Phase 2 — Secondary dashboards](https://github.com/halan/claudescope/issues?q=is%3Aissue+is%3Aopen+label%3Aphase-2)
+- [Phase 3 — Correlator extensions](https://github.com/halan/claudescope/issues?q=is%3Aissue+is%3Aopen+label%3Aphase-3)
+- [Phase 4 — Alerting](https://github.com/halan/claudescope/issues?q=is%3Aissue+is%3Aopen+label%3Aphase-4)
+
+Operating rules (20-item cap, stale items expire at 60 days, etc.) are in the [pinned tracker issue](https://github.com/halan/claudescope/issues/18).
+
 ## License
 
 MIT. See [LICENSE](LICENSE).
