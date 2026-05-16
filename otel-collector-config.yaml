@@ -19,13 +19,18 @@ processors:
         action: insert
 
 exporters:
-  # Métricas → Prometheus (scrape em /metrics na porta 8889)
+  # Metrics → Prometheus (scrape on /metrics port 8889)
+  # NOTE: metric_expiration defaults to 5 minutes — if Claude Code stops pushing
+  # for that long (idle, long thinking, etc.) all claude_code_* metrics vanish
+  # from /metrics and Prometheus shows "No data" until the next push. Extended
+  # to 24h so the dashboard stays continuous through normal usage gaps.
   prometheus:
     endpoint: 0.0.0.0:8889
+    metric_expiration: 24h
     resource_to_telemetry_conversion:
       enabled: true
 
-  # Logs/eventos → Loki
+  # Logs/events → Loki
   otlphttp/loki:
     endpoint: http://loki:3100/otlp
 

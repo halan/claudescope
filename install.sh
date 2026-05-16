@@ -126,6 +126,7 @@ processors:
 exporters:
   prometheus:
     endpoint: 0.0.0.0:8889
+    metric_expiration: 24h
     resource_to_telemetry_conversion: { enabled: true }
   otlphttp/loki:
     endpoint: http://loki:3100/otlp
