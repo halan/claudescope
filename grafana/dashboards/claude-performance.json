@@ -2,7 +2,7 @@
   "title": "Claude Code — Performance",
   "uid": "claude-performance",
   "schemaVersion": 39,
-  "version": 2,
+  "version": 3,
   "refresh": "30s",
   "time": { "from": "now-6h", "to": "now" },
   "templating": {
@@ -86,33 +86,130 @@
     { "id": 102, "type": "row", "title": "Slowest individual calls", "collapsed": false, "gridPos": { "x": 0, "y": 14, "w": 24, "h": 1 } },
 
     { "id": 7, "type": "table", "title": "Top 10 slowest api_requests",
-      "description": "One row per request_id, ranked by duration. Useful for spotting individual outliers.",
+      "description": "Ranked by duration. Look at input_tokens vs output_tokens to distinguish 'big input' from 'long generation'. Click a session_id to filter the Overview by it.",
       "gridPos": { "x": 0, "y": 15, "w": 24, "h": 10 },
       "datasource": { "type": "loki", "uid": "Loki" },
       "targets": [ {
-        "expr": "topk(10, max by (request_id, model, session_id, query_source) (max_over_time({service_name=\"claude-code\"} | event_name=\"api_request\" | session_id=~\"$session_id\" | unwrap duration_ms [$__range])))",
+        "expr": "{service_name=\"claude-code\"} | event_name=\"api_request\" | session_id=~\"$session_id\" | duration_ms > 0",
         "refId": "A",
-        "queryType": "instant"
+        "queryType": "range",
+        "maxLines": 5000
       } ],
       "transformations": [
+        { "id": "extractFields", "options": { "source": "labels", "format": "json", "keepTime": true, "replace": true } },
+        { "id": "convertFieldType", "options": { "fields": {}, "conversions": [
+          { "targetField": "duration_ms",   "destinationType": "number" },
+          { "targetField": "input_tokens",  "destinationType": "number" },
+          { "targetField": "output_tokens", "destinationType": "number" },
+          { "targetField": "cache_read_tokens", "destinationType": "number" }
+        ] } },
+        { "id": "sortBy", "options": { "sort": [ { "field": "duration_ms", "desc": true } ] } },
+        { "id": "limit", "options": { "limitField": 10 } },
         { "id": "organize", "options": {
-          "excludeByName": { "Time": true },
-          "renameByName": { "Value": "duration (ms)", "request_id": "Request", "model": "Model", "session_id": "Session", "query_source": "Source" }
-        } },
-        { "id": "sortBy", "options": { "fields": [], "sort": [ { "field": "duration (ms)", "desc": true } ] } }
+          "indexByName": { "Time": 0, "duration_ms": 1, "model": 2, "input_tokens": 3, "output_tokens": 4, "cache_read_tokens": 5, "query_source": 6, "session_id": 7 },
+          "excludeByName": {
+            "request_id": true, "prompt_id": true, "event_name": true, "event_sequence": true,
+            "event_timestamp": true, "observed_timestamp": true, "host_arch": true, "os_type": true,
+            "os_version": true, "scope_name": true, "scope_version": true, "service_name": true,
+            "service_version": true, "terminal_type": true, "user_id": true,
+            "cache_creation_tokens": true, "cost_usd": true, "cost_usd_micros": true,
+            "loki_attribute_labels": true, "speed": true, "effort": true,
+            "project": false
+          },
+          "renameByName": {
+            "duration_ms": "Duration (ms)", "model": "Model",
+            "input_tokens": "Input tok", "output_tokens": "Output tok",
+            "cache_read_tokens": "Cache read", "query_source": "Source",
+            "session_id": "Session", "project": "Project"
+          }
+        } }
       ],
-      "fieldConfig": { "defaults": {}, "overrides": [ { "matcher": { "id": "byName", "options": "duration (ms)" }, "properties": [ { "id": "unit", "value": "ms" }, { "id": "custom.cellOptions", "value": { "type": "color-background" } } ] } ] } },
+      "fieldConfig": { "defaults": {}, "overrides": [
+        { "matcher": { "id": "byName", "options": "Duration (ms)" },
+          "properties": [
+            { "id": "unit", "value": "ms" },
+            { "id": "custom.cellOptions", "value": { "type": "color-background", "mode": "gradient" } },
+            { "id": "thresholds", "value": { "mode": "absolute", "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 30000 },
+              { "color": "red", "value": 120000 }
+            ] } }
+          ] },
+        { "matcher": { "id": "byName", "options": "Session" },
+          "properties": [
+            { "id": "links", "value": [
+              { "title": "Filter Overview by this session",
+                "url": "/d/claude-overview?var-session_id=${__data.fields.Session}" }
+            ] }
+          ] }
+      ] } },
 
-    { "id": 103, "type": "row", "title": "Tool execution latency", "collapsed": false, "gridPos": { "x": 0, "y": 25, "w": 24, "h": 1 } },
+    { "id": 10, "type": "table", "title": "Slow calls (>60s) — chronological",
+      "description": "Same data, filtered to calls slower than 60 seconds, sorted by time. Helps you reconstruct 'what was I doing when the model got slow?'",
+      "gridPos": { "x": 0, "y": 25, "w": 24, "h": 8 },
+      "datasource": { "type": "loki", "uid": "Loki" },
+      "targets": [ {
+        "expr": "{service_name=\"claude-code\"} | event_name=\"api_request\" | session_id=~\"$session_id\" | duration_ms > 60000",
+        "refId": "A",
+        "queryType": "range",
+        "maxLines": 5000
+      } ],
+      "transformations": [
+        { "id": "extractFields", "options": { "source": "labels", "format": "json", "keepTime": true, "replace": true } },
+        { "id": "convertFieldType", "options": { "fields": {}, "conversions": [
+          { "targetField": "duration_ms",   "destinationType": "number" },
+          { "targetField": "input_tokens",  "destinationType": "number" },
+          { "targetField": "output_tokens", "destinationType": "number" }
+        ] } },
+        { "id": "sortBy", "options": { "sort": [ { "field": "Time", "desc": false } ] } },
+        { "id": "organize", "options": {
+          "indexByName": { "Time": 0, "duration_ms": 1, "model": 2, "input_tokens": 3, "output_tokens": 4, "query_source": 5, "session_id": 6 },
+          "excludeByName": {
+            "request_id": true, "prompt_id": true, "event_name": true, "event_sequence": true,
+            "event_timestamp": true, "observed_timestamp": true, "host_arch": true, "os_type": true,
+            "os_version": true, "scope_name": true, "scope_version": true, "service_name": true,
+            "service_version": true, "terminal_type": true, "user_id": true,
+            "cache_creation_tokens": true, "cache_read_tokens": true,
+            "cost_usd": true, "cost_usd_micros": true,
+            "loki_attribute_labels": true, "speed": true, "effort": true
+          },
+          "renameByName": {
+            "duration_ms": "Duration (ms)", "model": "Model",
+            "input_tokens": "Input tok", "output_tokens": "Output tok",
+            "query_source": "Source", "session_id": "Session"
+          }
+        } }
+      ],
+      "fieldConfig": { "defaults": {}, "overrides": [
+        { "matcher": { "id": "byName", "options": "Duration (ms)" },
+          "properties": [
+            { "id": "unit", "value": "ms" },
+            { "id": "custom.cellOptions", "value": { "type": "color-background", "mode": "gradient" } },
+            { "id": "thresholds", "value": { "mode": "absolute", "steps": [
+              { "color": "yellow", "value": null },
+              { "color": "orange", "value": 120000 },
+              { "color": "red", "value": 240000 }
+            ] } }
+          ] },
+        { "matcher": { "id": "byName", "options": "Session" },
+          "properties": [
+            { "id": "links", "value": [
+              { "title": "Filter Overview by this session",
+                "url": "/d/claude-overview?var-session_id=${__data.fields.Session}" }
+            ] }
+          ] }
+      ] } },
+
+    { "id": 103, "type": "row", "title": "Tool execution latency", "collapsed": false, "gridPos": { "x": 0, "y": 33, "w": 24, "h": 1 } },
 
     { "id": 8, "type": "timeseries", "title": "p95 tool execution by tool",
-      "gridPos": { "x": 0, "y": 26, "w": 12, "h": 8 },
+      "gridPos": { "x": 0, "y": 34, "w": 12, "h": 8 },
       "datasource": { "type": "loki", "uid": "Loki" },
       "targets": [ { "expr": "quantile_over_time(0.95, {service_name=\"claude-code\"} | event_name=\"tool_result\" | session_id=~\"$session_id\" | unwrap duration_ms [5m]) by (tool_name)", "legendFormat": "p95 {{tool_name}}", "refId": "A" } ],
       "fieldConfig": { "defaults": { "unit": "ms" } } },
 
     { "id": 9, "type": "bargauge", "title": "Avg tool duration (last window)",
-      "gridPos": { "x": 12, "y": 26, "w": 12, "h": 8 },
+      "gridPos": { "x": 12, "y": 34, "w": 12, "h": 8 },
       "datasource": { "type": "loki", "uid": "Loki" },
       "targets": [ { "expr": "avg_over_time({service_name=\"claude-code\"} | event_name=\"tool_result\" | session_id=~\"$session_id\" | unwrap duration_ms [$__range]) by (tool_name)", "legendFormat": "{{tool_name}}", "refId": "A" } ],
       "fieldConfig": { "defaults": { "unit": "ms", "decimals": 0 } },
