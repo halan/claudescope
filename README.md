@@ -2,6 +2,8 @@
 
 A scope for your Claude Code sessions. Self-hosted observability stack that turns Claude Code's OpenTelemetry signals into real-time dashboards: tokens, cost, tools, skills, and per-project breakdowns.
 
+![Dashboard](docs/dashboard.png)
+
 ```
 Claude Code ──OTLP/gRPC──▶ OTEL Collector ──▶ Prometheus (metrics)
                                           └─▶ Loki        (events/logs)
