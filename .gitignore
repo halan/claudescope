@@ -1,0 +1,21 @@
+# macOS
+.DS_Store
+
+# Backups created by install.sh when patching settings.json
+*.bak.*
+
+# Local env overrides
+.env
+.env.local
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.venv/
+
+# Editor
+.vscode/
+.idea/
+*.swp

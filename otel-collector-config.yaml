@@ -1,0 +1,45 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch:
+    timeout: 5s
+    send_batch_size: 1024
+
+  # Transforma atributos do log em labels do Loki (skill, tool, etc.)
+  attributes/loki_labels:
+    actions:
+      - key: loki.attribute.labels
+        value: event.name,tool_name,model,user.id,session.id
+        action: insert
+
+exporters:
+  # Métricas → Prometheus (scrape em /metrics na porta 8889)
+  prometheus:
+    endpoint: 0.0.0.0:8889
+    resource_to_telemetry_conversion:
+      enabled: true
+
+  # Logs/eventos → Loki
+  otlphttp/loki:
+    endpoint: http://loki:3100/otlp
+
+  # Útil pra debug — descomente se quiser ver no `docker logs`
+  # debug:
+  #   verbosity: detailed
+
+service:
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [prometheus]
+    logs:
+      receivers: [otlp]
+      processors: [attributes/loki_labels, batch]
+      exporters: [otlphttp/loki]

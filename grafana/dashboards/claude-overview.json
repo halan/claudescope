@@ -1,0 +1,140 @@
+{
+  "title": "Claude Code — Overview",
+  "uid": "claude-overview",
+  "schemaVersion": 39,
+  "version": 10,
+  "refresh": "10s",
+  "time": { "from": "now-6h", "to": "now" },
+  "panels": [
+
+    { "id": 100, "type": "row", "title": "Headline", "collapsed": false, "gridPos": { "x": 0, "y": 0, "w": 24, "h": 1 } },
+
+    { "id": 1, "type": "stat", "title": "Total cost",
+      "gridPos": { "x": 0, "y": 1, "w": 6, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [ { "expr": "sum(claude_code_cost_usage_USD_total)", "refId": "A" } ],
+      "fieldConfig": { "defaults": { "unit": "currencyUSD" } } },
+
+    { "id": 2, "type": "stat", "title": "Total tokens",
+      "gridPos": { "x": 6, "y": 1, "w": 6, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [ { "expr": "sum(claude_code_token_usage_tokens_total)", "refId": "A" } ],
+      "fieldConfig": { "defaults": { "unit": "short" } } },
+
+    { "id": 3, "type": "stat", "title": "Avg cost / session",
+      "description": "Mean across all sessions seen in the time range.",
+      "gridPos": { "x": 12, "y": 1, "w": 6, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [ { "expr": "avg(sum by (session_id) (claude_code_cost_usage_USD_total))", "refId": "A" } ],
+      "fieldConfig": { "defaults": { "unit": "currencyUSD" } } },
+
+    { "id": 4, "type": "stat", "title": "Cache hit ratio",
+      "description": "cacheRead tokens / (cacheRead + cacheCreation + input). Higher = more context reuse, lower cost per turn.",
+      "gridPos": { "x": 18, "y": 1, "w": 6, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [ { "expr": "sum(claude_code_token_usage_tokens_total{type=\"cacheRead\"}) / sum(claude_code_token_usage_tokens_total{type=~\"cacheRead|cacheCreation|input\"})", "refId": "A" } ],
+      "fieldConfig": { "defaults": { "unit": "percentunit", "decimals": 1, "thresholds": { "mode": "absolute", "steps": [ {"color": "red", "value": null}, {"color": "orange", "value": 0.5}, {"color": "green", "value": 0.8} ] } } } },
+
+    { "id": 101, "type": "row", "title": "Spend over time", "collapsed": false, "gridPos": { "x": 0, "y": 5, "w": 24, "h": 1 } },
+
+    { "id": 5, "type": "timeseries", "title": "Cost rate (USD/sec)",
+      "gridPos": { "x": 0, "y": 6, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [ { "expr": "sum(rate(claude_code_cost_usage_USD_total[5m]))", "legendFormat": "USD/s", "refId": "A" } ],
+      "fieldConfig": { "defaults": { "unit": "currencyUSD" } } },
+
+    { "id": 6, "type": "timeseries", "title": "Tokens by type",
+      "gridPos": { "x": 12, "y": 6, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [ { "expr": "sum by (type) (rate(claude_code_token_usage_tokens_total[5m]))", "legendFormat": "{{type}}", "refId": "A" } ] },
+
+    { "id": 106, "type": "row", "title": "By project", "collapsed": false, "gridPos": { "x": 0, "y": 14, "w": 24, "h": 1 } },
+
+    { "id": 14, "type": "bargauge", "title": "Cost by project",
+      "description": "Requires the claude wrapper from ~/.zshrc that sets OTEL_RESOURCE_ATTRIBUTES=...,project=<repo>. Sessions started without the wrapper appear as no project label.",
+      "gridPos": { "x": 0, "y": 15, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [ { "expr": "sum by (project) (claude_code_cost_usage_USD_total)", "legendFormat": "{{project}}", "refId": "A" } ],
+      "fieldConfig": { "defaults": { "unit": "currencyUSD", "noValue": "Open a new shell so the wrapper takes effect, then start a Claude session in a project folder." } },
+      "options": { "reduceOptions": { "calc": "lastNotNull", "fields": "", "values": false }, "orientation": "horizontal", "displayMode": "gradient" } },
+
+    { "id": 15, "type": "bargauge", "title": "Tokens by project",
+      "gridPos": { "x": 12, "y": 15, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [ { "expr": "sum by (project) (claude_code_token_usage_tokens_total)", "legendFormat": "{{project}}", "refId": "A" } ],
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "noValue": "Open a new shell so the wrapper takes effect, then start a Claude session in a project folder." } },
+      "options": { "reduceOptions": { "calc": "lastNotNull", "fields": "", "values": false }, "orientation": "horizontal", "displayMode": "gradient" } },
+
+    { "id": 102, "type": "row", "title": "Models", "collapsed": false, "gridPos": { "x": 0, "y": 23, "w": 24, "h": 1 } },
+
+    { "id": 7, "type": "timeseries", "title": "Tokens by model",
+      "gridPos": { "x": 0, "y": 24, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [ { "expr": "sum by (model) (rate(claude_code_token_usage_tokens_total[5m]))", "legendFormat": "{{model}}", "refId": "A" } ] },
+
+    { "id": 8, "type": "bargauge", "title": "Cost by model",
+      "gridPos": { "x": 12, "y": 24, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [ { "expr": "sum by (model) (claude_code_cost_usage_USD_total)", "legendFormat": "{{model}}", "refId": "A" } ],
+      "fieldConfig": { "defaults": { "unit": "currencyUSD" } },
+      "options": { "reduceOptions": { "calc": "lastNotNull", "fields": "", "values": false }, "orientation": "horizontal", "displayMode": "gradient" } },
+
+    { "id": 103, "type": "row", "title": "Where do tokens go — by tool", "collapsed": false, "gridPos": { "x": 0, "y": 32, "w": 24, "h": 1 } },
+
+    { "id": 9, "type": "bargauge", "title": "Tool usage (count of invocations)",
+      "gridPos": { "x": 0, "y": 33, "w": 8, "h": 10 },
+      "datasource": { "type": "loki", "uid": "Loki" },
+      "targets": [ { "expr": "sum by (tool_name) (count_over_time({service_name=\"claude-code\"} | event_name=\"tool_result\" [$__range]))", "legendFormat": "{{tool_name}}", "refId": "A" } ],
+      "options": { "reduceOptions": { "calc": "lastNotNull", "fields": "", "values": false }, "orientation": "horizontal", "displayMode": "gradient" } },
+
+    { "id": 10, "type": "bargauge", "title": "Top tools by estimated tokens (result_bytes / 4)",
+      "description": "Claude Code does not tag api_request with tool_name. This approximates token cost using the size of tool results that get fed back into the model.",
+      "gridPos": { "x": 8, "y": 33, "w": 8, "h": 10 },
+      "datasource": { "type": "loki", "uid": "Loki" },
+      "targets": [ { "expr": "topk(10, sum by (tool_name) (sum_over_time({service_name=\"claude-code\"} | event_name=\"tool_result\" | unwrap tool_result_size_bytes [$__range])) / 4)", "legendFormat": "{{tool_name}}", "refId": "A" } ],
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0 } },
+      "options": { "reduceOptions": { "calc": "lastNotNull", "fields": "", "values": false }, "orientation": "horizontal", "displayMode": "gradient" } },
+
+    { "id": 11, "type": "bargauge", "title": "MCP tools (estimated tokens)",
+      "gridPos": { "x": 16, "y": 33, "w": 8, "h": 10 },
+      "datasource": { "type": "loki", "uid": "Loki" },
+      "targets": [ { "expr": "sum by (tool_name) (sum_over_time({service_name=\"claude-code\"} | event_name=\"tool_result\" | tool_name=~\"mcp__.+\" | unwrap tool_result_size_bytes [$__range])) / 4", "legendFormat": "{{tool_name}}", "refId": "A" } ],
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "noValue": "No MCP usage in range" } },
+      "options": { "reduceOptions": { "calc": "lastNotNull", "fields": "", "values": false }, "orientation": "horizontal", "displayMode": "gradient" } },
+
+    { "id": 104, "type": "row", "title": "Where do tokens go — by skill / command", "collapsed": false, "gridPos": { "x": 0, "y": 43, "w": 24, "h": 1 } },
+
+    { "id": 12, "type": "bargauge", "title": "Slash invocations (count, from user_prompt)",
+      "description": "Number of times each /<skill> appeared as the first token of a user prompt. Requires OTEL_LOG_USER_PROMPTS=1.",
+      "gridPos": { "x": 0, "y": 44, "w": 8, "h": 8 },
+      "datasource": { "type": "loki", "uid": "Loki" },
+      "targets": [ { "expr": "sum by (skill) (count_over_time({service_name=\"claude-code\"} | event_name=\"user_prompt\" | prompt =~ `^/.*` | line_format \"{{.prompt}}\" | regexp `^/(?P<skill>[a-zA-Z][a-zA-Z0-9_-]*)` [$__range]))", "legendFormat": "{{skill}}", "refId": "A" } ],
+      "options": { "reduceOptions": { "calc": "lastNotNull", "fields": "", "values": false }, "orientation": "horizontal", "displayMode": "gradient" } },
+
+    { "id": 16, "type": "bargauge", "title": "Cost by skill (USD, correlated, last 24h)",
+      "description": "From the correlator sidecar. Attribution rule: every api_request in a session goes to whichever /<skill> was most recently invoked in that same session. Anything before the first slash is bucketed as __chat.",
+      "gridPos": { "x": 8, "y": 44, "w": 8, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [ { "expr": "sum by (skill) (claude_code_skill_cost_usd)", "legendFormat": "{{skill}}", "refId": "A" } ],
+      "fieldConfig": { "defaults": { "unit": "currencyUSD", "noValue": "Correlator has not published yet (first scrape ~30s after start)." } },
+      "options": { "reduceOptions": { "calc": "lastNotNull", "fields": "", "values": false }, "orientation": "horizontal", "displayMode": "gradient" } },
+
+    { "id": 17, "type": "bargauge", "title": "Tokens by skill (correlated, last 24h)",
+      "gridPos": { "x": 16, "y": 44, "w": 8, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [ { "expr": "sum by (skill) (claude_code_skill_tokens)", "legendFormat": "{{skill}}", "refId": "A" } ],
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "noValue": "Correlator has not published yet." } },
+      "options": { "reduceOptions": { "calc": "lastNotNull", "fields": "", "values": false }, "orientation": "horizontal", "displayMode": "gradient" } },
+
+    { "id": 105, "type": "row", "title": "Raw events", "collapsed": true,
+      "gridPos": { "x": 0, "y": 52, "w": 24, "h": 1 },
+      "panels": [
+        { "id": 13, "type": "logs", "title": "Recent events",
+          "gridPos": { "x": 0, "y": 53, "w": 24, "h": 10 },
+          "datasource": { "type": "loki", "uid": "Loki" },
+          "targets": [ { "expr": "{service_name=\"claude-code\"}", "refId": "A" } ] }
+      ]
+    }
+
+  ]
+}
