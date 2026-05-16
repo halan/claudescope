@@ -37,6 +37,7 @@ command -v jq     >/dev/null || { echo "jq not found (brew install jq)"; exit 1;
 echo "==> Creating tree at $TARGET_DIR"
 mkdir -p "$TARGET_DIR/grafana/provisioning/datasources" \
          "$TARGET_DIR/grafana/provisioning/dashboards" \
+         "$TARGET_DIR/grafana/provisioning/alerting" \
          "$TARGET_DIR/grafana/dashboards" \
          "$TARGET_DIR/correlator"
 
@@ -386,12 +387,14 @@ cat > "$TARGET_DIR/grafana/provisioning/datasources/datasources.yml" <<'YAML'
 apiVersion: 1
 datasources:
   - name: Prometheus
+    uid: Prometheus
     type: prometheus
     access: proxy
     url: http://prometheus:9090
     isDefault: true
     editable: true
   - name: Loki
+    uid: Loki
     type: loki
     access: proxy
     url: http://loki:3100
@@ -409,6 +412,73 @@ providers:
     updateIntervalSeconds: 30
     options:
       path: /var/lib/grafana/dashboards
+YAML
+
+cat > "$TARGET_DIR/grafana/provisioning/alerting/contact-points.yaml" <<'YAML'
+apiVersion: 1
+contactPoints:
+  - orgId: 1
+    name: claudescope-default
+    receivers:
+      - uid: claudescope-default-webhook
+        type: webhook
+        disableResolveMessage: false
+        settings:
+          url: http://localhost:9999/alerts-placeholder
+          httpMethod: POST
+YAML
+
+cat > "$TARGET_DIR/grafana/provisioning/alerting/policies.yaml" <<'YAML'
+apiVersion: 1
+policies:
+  - orgId: 1
+    receiver: claudescope-default
+    group_by: [grafana_folder, alertname]
+    group_wait: 30s
+    group_interval: 5m
+    repeat_interval: 4h
+YAML
+
+cat > "$TARGET_DIR/grafana/provisioning/alerting/rules-cost.yaml" <<'YAML'
+apiVersion: 1
+groups:
+  - orgId: 1
+    name: cost-alerts
+    folder: claudescope
+    interval: 1m
+    rules:
+      - uid: claudescope-daily-cost-cap
+        title: Daily cost cap exceeded
+        condition: B
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: Prometheus
+            model:
+              refId: A
+              instant: true
+              expr: sum(increase(claude_code_cost_usage_USD_total[24h]))
+          - refId: B
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: threshold
+              expression: A
+              conditions:
+                - type: query
+                  evaluator: { type: gt, params: [10] }
+        annotations:
+          summary: "Claude Code daily spend crossed the cap"
+          description: |
+            Cumulative Claude Code cost in the last 24h is over $10.
+            Current value: {{ $values.A.Value | printf "%.2f" }} USD.
+        labels:
+          severity: warning
+          component: cost
 YAML
 
 cat > "$TARGET_DIR/grafana/dashboards/claude-overview.json" <<'JSON'

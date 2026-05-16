@@ -1,0 +1,16 @@
+apiVersion: 1
+
+# Default contact point — ships as a webhook pointing nowhere.
+# Replace the `url` with your Slack/Discord/Teams/email webhook to receive
+# notifications. Alerts will still show up in Grafana's Alerting UI even if
+# the webhook is unreachable.
+contactPoints:
+  - orgId: 1
+    name: claudescope-default
+    receivers:
+      - uid: claudescope-default-webhook
+        type: webhook
+        disableResolveMessage: false
+        settings:
+          url: http://localhost:9999/alerts-placeholder
+          httpMethod: POST

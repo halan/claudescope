@@ -216,6 +216,10 @@ Open a new shell so the function takes effect. All metrics and events then carry
 
 Reducing retention does not delete past data immediately — the compactor sweeps on its own schedule.
 
+## Alerting
+
+Grafana-provisioned alert rules ship under `grafana/provisioning/alerting/`. The first one — **Daily cost cap exceeded** — fires when cumulative Claude Code spend in the last 24h crosses $10. Edit the threshold or swap the placeholder webhook for a real Slack/Discord/email endpoint in `contact-points.yaml`. See [docs/alerting.md](docs/alerting.md) for details.
+
 ## Stop / clean
 
 ```bash
