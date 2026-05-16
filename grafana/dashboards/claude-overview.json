@@ -2,7 +2,7 @@
   "title": "Claude Code — Overview",
   "uid": "claude-overview",
   "schemaVersion": 39,
-  "version": 15,
+  "version": 16,
   "refresh": "10s",
   "time": { "from": "now-6h", "to": "now" },
   "annotations": {
@@ -157,11 +157,19 @@
       "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "noValue": "Correlator has not published yet (first scrape ~30s after start)." } },
       "options": { "reduceOptions": { "calc": "lastNotNull", "fields": "", "values": false }, "orientation": "horizontal", "displayMode": "gradient" } },
 
+    { "id": 17, "type": "bargauge", "title": "Avg api_request duration per skill turn (last 24h)",
+      "description": "From the correlator: sum of api_request duration_ms divided by number of turns, per skill. Cross-session.",
+      "gridPos": { "x": 0, "y": 52, "w": 24, "h": 6 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [ { "expr": "sum by (skill) (claude_code_skill_duration_ms) / sum by (skill) (claude_code_skill_turns)", "legendFormat": "{{skill}}", "refId": "A" } ],
+      "fieldConfig": { "defaults": { "unit": "ms", "decimals": 0, "noValue": "Correlator has not published yet." } },
+      "options": { "reduceOptions": { "calc": "lastNotNull", "fields": "", "values": false }, "orientation": "horizontal", "displayMode": "gradient" } },
+
     { "id": 106, "type": "row", "title": "Raw events", "collapsed": true,
-      "gridPos": { "x": 0, "y": 52, "w": 24, "h": 1 },
+      "gridPos": { "x": 0, "y": 58, "w": 24, "h": 1 },
       "panels": [
         { "id": 15, "type": "logs", "title": "Recent events",
-          "gridPos": { "x": 0, "y": 53, "w": 24, "h": 10 },
+          "gridPos": { "x": 0, "y": 59, "w": 24, "h": 10 },
           "datasource": { "type": "loki", "uid": "Loki" },
           "targets": [ { "expr": "{service_name=\"claude-code\"} | session_id=~\"$session_id\"", "refId": "A" } ] }
       ]
