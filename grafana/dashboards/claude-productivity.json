@@ -1,0 +1,158 @@
+{
+  "title": "Claude Code — Productivity",
+  "uid": "claude-productivity",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-7d", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "session_id",
+        "label": "Session",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "Prometheus" },
+        "query": "label_values(claude_code_token_usage_tokens_total, session_id)",
+        "refresh": 2,
+        "includeAll": true,
+        "allValue": ".+",
+        "multi": true,
+        "current": { "text": "All", "value": "$__all" },
+        "sort": 1
+      },
+      {
+        "name": "project",
+        "label": "Project",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "Prometheus" },
+        "query": "label_values(claude_code_token_usage_tokens_total, project)",
+        "refresh": 2,
+        "includeAll": true,
+        "allValue": ".+",
+        "multi": true,
+        "current": { "text": "All", "value": "$__all" },
+        "sort": 1
+      }
+    ]
+  },
+  "panels": [
+
+    { "id": 100, "type": "row", "title": "Output volume", "collapsed": false, "gridPos": { "x": 0, "y": 0, "w": 24, "h": 1 } },
+
+    { "id": 1, "type": "stat", "title": "Lines added",
+      "gridPos": { "x": 0, "y": 1, "w": 4, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [ { "expr": "sum(claude_code_lines_of_code_count_total{session_id=~\"$session_id\",project=~\"$project\",type=\"added\"})", "refId": "A" } ],
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "color": { "mode": "fixed", "fixedColor": "green" }, "noValue": "0" } },
+      "options": { "graphMode": "area", "colorMode": "value", "textMode": "auto", "reduceOptions": { "calc": "lastNotNull", "fields": "", "values": false } } },
+
+    { "id": 2, "type": "stat", "title": "Lines removed",
+      "gridPos": { "x": 4, "y": 1, "w": 4, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [ { "expr": "sum(claude_code_lines_of_code_count_total{session_id=~\"$session_id\",project=~\"$project\",type=\"removed\"})", "refId": "A" } ],
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "color": { "mode": "fixed", "fixedColor": "red" }, "noValue": "0" } },
+      "options": { "graphMode": "area", "colorMode": "value", "textMode": "auto", "reduceOptions": { "calc": "lastNotNull", "fields": "", "values": false } } },
+
+    { "id": 3, "type": "stat", "title": "Net LOC",
+      "description": "Added minus removed.",
+      "gridPos": { "x": 8, "y": 1, "w": 4, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [ { "expr": "sum(claude_code_lines_of_code_count_total{session_id=~\"$session_id\",project=~\"$project\",type=\"added\"}) - sum(claude_code_lines_of_code_count_total{session_id=~\"$session_id\",project=~\"$project\",type=\"removed\"})", "refId": "A" } ],
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "noValue": "0" } },
+      "options": { "graphMode": "area", "colorMode": "value", "textMode": "auto", "reduceOptions": { "calc": "lastNotNull", "fields": "", "values": false } } },
+
+    { "id": 4, "type": "stat", "title": "Commits",
+      "gridPos": { "x": 12, "y": 1, "w": 4, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [ { "expr": "sum(claude_code_commit_count_total{session_id=~\"$session_id\",project=~\"$project\"})", "refId": "A" } ],
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "noValue": "0" } },
+      "options": { "graphMode": "area", "colorMode": "value", "textMode": "auto", "reduceOptions": { "calc": "lastNotNull", "fields": "", "values": false } } },
+
+    { "id": 5, "type": "stat", "title": "Active CLI time",
+      "description": "Total time the CLI was busy doing work in this period.",
+      "gridPos": { "x": 16, "y": 1, "w": 4, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [ { "expr": "sum(claude_code_active_time_seconds_total{session_id=~\"$session_id\",project=~\"$project\",type=\"cli\"})", "refId": "A" } ],
+      "fieldConfig": { "defaults": { "unit": "s", "decimals": 0, "noValue": "0" } },
+      "options": { "graphMode": "area", "colorMode": "value", "textMode": "auto", "reduceOptions": { "calc": "lastNotNull", "fields": "", "values": false } } },
+
+    { "id": 6, "type": "stat", "title": "Your typing time",
+      "description": "Total time you spent actively typing (vs waiting for the model). Lower is good — Claude does the work.",
+      "gridPos": { "x": 20, "y": 1, "w": 4, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [ { "expr": "sum(claude_code_active_time_seconds_total{session_id=~\"$session_id\",project=~\"$project\",type=\"user\"})", "refId": "A" } ],
+      "fieldConfig": { "defaults": { "unit": "s", "decimals": 0, "noValue": "0" } },
+      "options": { "graphMode": "area", "colorMode": "value", "textMode": "auto", "reduceOptions": { "calc": "lastNotNull", "fields": "", "values": false } } },
+
+    { "id": 101, "type": "row", "title": "Over time", "collapsed": false, "gridPos": { "x": 0, "y": 5, "w": 24, "h": 1 } },
+
+    { "id": 7, "type": "timeseries", "title": "Lines of code rate",
+      "gridPos": { "x": 0, "y": 6, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [ { "expr": "sum by (type) (rate(claude_code_lines_of_code_count_total{session_id=~\"$session_id\",project=~\"$project\"}[5m]))", "legendFormat": "{{type}}", "refId": "A" } ],
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "drawStyle": "line", "fillOpacity": 20 } } } },
+
+    { "id": 8, "type": "timeseries", "title": "Commits over time",
+      "gridPos": { "x": 12, "y": 6, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [ { "expr": "sum(increase(claude_code_commit_count_total{session_id=~\"$session_id\",project=~\"$project\"}[1h]))", "legendFormat": "commits/h", "refId": "A" } ],
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "drawStyle": "bars", "fillOpacity": 60 } } } },
+
+    { "id": 102, "type": "row", "title": "By project", "collapsed": false, "gridPos": { "x": 0, "y": 14, "w": 24, "h": 1 } },
+
+    { "id": 9, "type": "bargauge", "title": "Net LOC by project",
+      "gridPos": { "x": 0, "y": 15, "w": 8, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [ { "expr": "sum by (project) (claude_code_lines_of_code_count_total{session_id=~\"$session_id\",project=~\"$project\",type=\"added\"}) - sum by (project) (claude_code_lines_of_code_count_total{session_id=~\"$session_id\",project=~\"$project\",type=\"removed\"})", "legendFormat": "{{project}}", "refId": "A" } ],
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "noValue": "(no project label — see Per-project cost section in README)" } },
+      "options": { "reduceOptions": { "calc": "lastNotNull", "fields": "", "values": false }, "orientation": "horizontal", "displayMode": "gradient" } },
+
+    { "id": 10, "type": "bargauge", "title": "Commits by project",
+      "gridPos": { "x": 8, "y": 15, "w": 8, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [ { "expr": "sum by (project) (claude_code_commit_count_total{session_id=~\"$session_id\",project=~\"$project\"})", "legendFormat": "{{project}}", "refId": "A" } ],
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "noValue": "No commits in range" } },
+      "options": { "reduceOptions": { "calc": "lastNotNull", "fields": "", "values": false }, "orientation": "horizontal", "displayMode": "gradient" } },
+
+    { "id": 11, "type": "bargauge", "title": "Tokens by project",
+      "gridPos": { "x": 16, "y": 15, "w": 8, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [ { "expr": "sum by (project) (claude_code_token_usage_tokens_total{session_id=~\"$session_id\",project=~\"$project\"})", "legendFormat": "{{project}}", "refId": "A" } ],
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0 } },
+      "options": { "reduceOptions": { "calc": "lastNotNull", "fields": "", "values": false }, "orientation": "horizontal", "displayMode": "gradient" } },
+
+    { "id": 103, "type": "row", "title": "Efficiency (derived)", "collapsed": false, "gridPos": { "x": 0, "y": 23, "w": 24, "h": 1 } },
+
+    { "id": 12, "type": "stat", "title": "Tokens per net LOC",
+      "description": "Total tokens divided by net LOC added. Lower = more lines per token. A useful rough proxy for 'how dense was my output'.",
+      "gridPos": { "x": 0, "y": 24, "w": 6, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [ { "expr": "sum(claude_code_token_usage_tokens_total{session_id=~\"$session_id\",project=~\"$project\"}) / (sum(claude_code_lines_of_code_count_total{session_id=~\"$session_id\",project=~\"$project\",type=\"added\"}) - sum(claude_code_lines_of_code_count_total{session_id=~\"$session_id\",project=~\"$project\",type=\"removed\"}))", "refId": "A" } ],
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "noValue": "n/a (no LOC change)" } },
+      "options": { "graphMode": "none", "colorMode": "none", "textMode": "auto", "reduceOptions": { "calc": "lastNotNull", "fields": "", "values": false } } },
+
+    { "id": 13, "type": "stat", "title": "Est. spend per net LOC",
+      "description": "Est. spend divided by net LOC. Token-based estimate — see Overview header for caveat.",
+      "gridPos": { "x": 6, "y": 24, "w": 6, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [ { "expr": "sum(claude_code_cost_usage_USD_total{session_id=~\"$session_id\",project=~\"$project\"}) / (sum(claude_code_lines_of_code_count_total{session_id=~\"$session_id\",project=~\"$project\",type=\"added\"}) - sum(claude_code_lines_of_code_count_total{session_id=~\"$session_id\",project=~\"$project\",type=\"removed\"}))", "refId": "A" } ],
+      "fieldConfig": { "defaults": { "unit": "currencyUSD", "decimals": 4, "noValue": "n/a", "color": { "mode": "fixed", "fixedColor": "text" } } },
+      "options": { "graphMode": "none", "colorMode": "none", "textMode": "auto", "reduceOptions": { "calc": "lastNotNull", "fields": "", "values": false } } },
+
+    { "id": 14, "type": "stat", "title": "Est. spend per commit",
+      "gridPos": { "x": 12, "y": 24, "w": 6, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [ { "expr": "sum(claude_code_cost_usage_USD_total{session_id=~\"$session_id\",project=~\"$project\"}) / sum(claude_code_commit_count_total{session_id=~\"$session_id\",project=~\"$project\"})", "refId": "A" } ],
+      "fieldConfig": { "defaults": { "unit": "currencyUSD", "decimals": 4, "noValue": "n/a (no commits)", "color": { "mode": "fixed", "fixedColor": "text" } } },
+      "options": { "graphMode": "none", "colorMode": "none", "textMode": "auto", "reduceOptions": { "calc": "lastNotNull", "fields": "", "values": false } } },
+
+    { "id": 17, "type": "stat", "title": "Active CLI / your typing",
+      "description": "How much time the CLI worked for every second you typed. Higher = more leverage.",
+      "gridPos": { "x": 18, "y": 24, "w": 6, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [ { "expr": "sum(claude_code_active_time_seconds_total{session_id=~\"$session_id\",project=~\"$project\",type=\"cli\"}) / sum(claude_code_active_time_seconds_total{session_id=~\"$session_id\",project=~\"$project\",type=\"user\"})", "refId": "A" } ],
+      "fieldConfig": { "defaults": { "unit": "none", "decimals": 1, "noValue": "n/a", "thresholds": { "mode": "absolute", "steps": [ {"color": "yellow", "value": null}, {"color": "green", "value": 5} ] } } },
+      "options": { "graphMode": "none", "colorMode": "value", "textMode": "auto", "reduceOptions": { "calc": "lastNotNull", "fields": "", "values": false } } }
+
+  ]
+}
