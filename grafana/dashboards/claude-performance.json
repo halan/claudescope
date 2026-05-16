@@ -2,7 +2,7 @@
   "title": "Claude Code — Performance",
   "uid": "claude-performance",
   "schemaVersion": 39,
-  "version": 3,
+  "version": 4,
   "refresh": "30s",
   "time": { "from": "now-6h", "to": "now" },
   "templating": {
@@ -213,7 +213,40 @@
       "datasource": { "type": "loki", "uid": "Loki" },
       "targets": [ { "expr": "avg_over_time({service_name=\"claude-code\"} | event_name=\"tool_result\" | session_id=~\"$session_id\" | unwrap duration_ms [$__range]) by (tool_name)", "legendFormat": "{{tool_name}}", "refId": "A" } ],
       "fieldConfig": { "defaults": { "unit": "ms", "decimals": 0 } },
-      "options": { "reduceOptions": { "calc": "lastNotNull", "fields": "", "values": false }, "orientation": "horizontal", "displayMode": "gradient" } }
+      "options": { "reduceOptions": { "calc": "lastNotNull", "fields": "", "values": false }, "orientation": "horizontal", "displayMode": "gradient" } },
+
+    { "id": 11, "type": "table", "title": "Per-tool latency breakdown",
+      "description": "Full percentile breakdown per tool over the selected range. Joins 5 Loki queries by tool_name.",
+      "gridPos": { "x": 0, "y": 42, "w": 24, "h": 10 },
+      "datasource": { "type": "loki", "uid": "Loki" },
+      "targets": [
+        { "expr": "sum by (tool_name) (count_over_time({service_name=\"claude-code\"} | event_name=\"tool_result\" | session_id=~\"$session_id\" [$__range]))", "legendFormat": "calls", "refId": "A", "queryType": "instant" },
+        { "expr": "quantile_over_time(0.50, {service_name=\"claude-code\"} | event_name=\"tool_result\" | session_id=~\"$session_id\" | unwrap duration_ms [$__range]) by (tool_name)", "legendFormat": "p50", "refId": "B", "queryType": "instant" },
+        { "expr": "quantile_over_time(0.95, {service_name=\"claude-code\"} | event_name=\"tool_result\" | session_id=~\"$session_id\" | unwrap duration_ms [$__range]) by (tool_name)", "legendFormat": "p95", "refId": "C", "queryType": "instant" },
+        { "expr": "quantile_over_time(0.99, {service_name=\"claude-code\"} | event_name=\"tool_result\" | session_id=~\"$session_id\" | unwrap duration_ms [$__range]) by (tool_name)", "legendFormat": "p99", "refId": "D", "queryType": "instant" },
+        { "expr": "max_over_time({service_name=\"claude-code\"} | event_name=\"tool_result\" | session_id=~\"$session_id\" | unwrap duration_ms [$__range]) by (tool_name)", "legendFormat": "max", "refId": "E", "queryType": "instant" }
+      ],
+      "transformations": [
+        { "id": "merge", "options": {} },
+        { "id": "organize", "options": {
+          "indexByName": { "tool_name": 0, "Value #A": 1, "Value #B": 2, "Value #C": 3, "Value #D": 4, "Value #E": 5 },
+          "excludeByName": { "Time": true },
+          "renameByName": {
+            "tool_name": "Tool",
+            "Value #A": "Calls", "Value #B": "p50 (ms)", "Value #C": "p95 (ms)",
+            "Value #D": "p99 (ms)", "Value #E": "max (ms)"
+          }
+        } },
+        { "id": "sortBy", "options": { "sort": [ { "field": "p95 (ms)", "desc": true } ] } }
+      ],
+      "fieldConfig": { "defaults": {}, "overrides": [
+        { "matcher": { "id": "byRegexp", "options": "(p50|p95|p99|max).*" },
+          "properties": [ { "id": "unit", "value": "ms" }, { "id": "decimals", "value": 0 },
+            { "id": "custom.cellOptions", "value": { "type": "color-background", "mode": "gradient" } },
+            { "id": "thresholds", "value": { "mode": "absolute", "steps": [ {"color": "green", "value": null}, {"color": "yellow", "value": 500}, {"color": "orange", "value": 2000}, {"color": "red", "value": 10000} ] } }
+          ] },
+        { "matcher": { "id": "byName", "options": "Calls" }, "properties": [ { "id": "decimals", "value": 0 } ] }
+      ] } }
 
   ]
 }
