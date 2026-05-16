@@ -2,7 +2,7 @@
   "title": "Claude Code — Overview",
   "uid": "claude-overview",
   "schemaVersion": 39,
-  "version": 11,
+  "version": 12,
   "refresh": "10s",
   "time": { "from": "now-6h", "to": "now" },
   "panels": [
@@ -42,10 +42,32 @@
     { "id": 101, "type": "row", "title": "Spend over time", "collapsed": false, "gridPos": { "x": 0, "y": 5, "w": 24, "h": 1 } },
 
     { "id": 5, "type": "timeseries", "title": "Cost rate (USD/sec)",
+      "description": "Sustained spend rate. Yellow band = warm (>$0.005/s ≈ $18/h), red band = hot (>$0.015/s ≈ $54/h). Tune the thresholds to your normal usage.",
       "gridPos": { "x": 0, "y": 6, "w": 12, "h": 8 },
       "datasource": { "type": "prometheus", "uid": "Prometheus" },
       "targets": [ { "expr": "sum(rate(claude_code_cost_usage_USD_total[5m]))", "legendFormat": "USD/s", "refId": "A" } ],
-      "fieldConfig": { "defaults": { "unit": "currencyUSD" } } },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green",  "value": null },
+              { "color": "yellow", "value": 0.005 },
+              { "color": "red",    "value": 0.015 }
+            ]
+          },
+          "custom": {
+            "thresholdsStyle": { "mode": "area" },
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "gradientMode": "scheme",
+            "showPoints": "never"
+          }
+        }
+      } },
 
     { "id": 6, "type": "timeseries", "title": "Tokens by type",
       "gridPos": { "x": 12, "y": 6, "w": 12, "h": 8 },
