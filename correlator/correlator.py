@@ -13,6 +13,7 @@ Exposes Prometheus metrics on :9100:
 
 Gauges, not counters — each scrape reflects the current window snapshot.
 """
+
 import os
 import re
 import time
@@ -119,14 +120,20 @@ def publish(tokens, cost, turns):
 
 def main():
     start_http_server(PORT)
-    print(f"correlator listening on :{PORT}, polling {LOKI} every {INTERVAL}s, window={WINDOW_HOURS}h", flush=True)
+    print(
+        f"correlator listening on :{PORT}, polling {LOKI} every {INTERVAL}s, window={WINDOW_HOURS}h",
+        flush=True,
+    )
     while True:
         try:
             events = fetch_events()
             tokens, cost, turns = correlate(events)
             publish(tokens, cost, turns)
             total_turns = sum(turns.values())
-            print(f"updated: {total_turns} turns across {len(turns)} skills — {list(turns.keys())}", flush=True)
+            print(
+                f"updated: {total_turns} turns across {len(turns)} skills — {list(turns.keys())}",
+                flush=True,
+            )
         except Exception as exc:
             print(f"error: {exc}", flush=True)
         time.sleep(INTERVAL)
