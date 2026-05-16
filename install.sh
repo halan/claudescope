@@ -19,8 +19,10 @@
 #                                          REQUIRED if you want the "Slash invocations" panel
 #                                          (it regex-extracts /skill names from the prompt).
 #                                          Set to 0 if you'd rather not have prompts stored.
-#   OTEL_RESOURCE_ATTRIBUTES=service.name=claude-code,user.id=<you>
-#                                        — tags every signal with these resource attrs
+# NOT set: OTEL_RESOURCE_ATTRIBUTES.
+#   settings.json env vars override the shell environment at startup, so if
+#   we set this here it would clobber the optional shell wrapper that adds
+#   project=<repo>. Left unset so the wrapper (or OTEL default) wins.
 #
 # Nothing else in settings.json is touched.
 set -euo pipefail
@@ -452,7 +454,12 @@ mkdir -p "$(dirname "$SETTINGS")"
 [ -f "$SETTINGS" ] || echo '{}' > "$SETTINGS"
 cp "$SETTINGS" "$SETTINGS.bak.$(date +%s)"
 
-ENV_PATCH=$(jq -n --arg uid "$USER_ID" '{
+# NOTE: OTEL_RESOURCE_ATTRIBUTES is intentionally NOT set here.
+# settings.json env vars override the shell environment at Claude Code startup,
+# which means any project=... value set by the optional shell wrapper would be
+# lost. Leaving the var unset lets the wrapper (or the OTEL default) decide.
+# When no wrapper is in use, the OTEL SDK falls back to service.name=unknown_service.
+ENV_PATCH=$(jq -n '{
   CLAUDE_CODE_ENABLE_TELEMETRY: "1",
   OTEL_METRICS_EXPORTER: "otlp",
   OTEL_LOGS_EXPORTER: "otlp",
@@ -460,8 +467,7 @@ ENV_PATCH=$(jq -n --arg uid "$USER_ID" '{
   OTEL_EXPORTER_OTLP_ENDPOINT: "http://localhost:4317",
   OTEL_METRIC_EXPORT_INTERVAL: "10000",
   OTEL_LOGS_EXPORT_INTERVAL: "5000",
-  OTEL_LOG_USER_PROMPTS: "1",
-  OTEL_RESOURCE_ATTRIBUTES: ("service.name=claude-code,user.id=" + $uid)
+  OTEL_LOG_USER_PROMPTS: "1"
 }')
 tmp=$(mktemp)
 jq --argjson p "$ENV_PATCH" '.env = ((.env // {}) + $p)' "$SETTINGS" > "$tmp" && mv "$tmp" "$SETTINGS"

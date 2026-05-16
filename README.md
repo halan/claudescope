@@ -68,10 +68,11 @@ The install script merges these keys into `~/.claude/settings.json` (a timestamp
   "OTEL_EXPORTER_OTLP_ENDPOINT": "http://localhost:4317",
   "OTEL_METRIC_EXPORT_INTERVAL": "10000",
   "OTEL_LOGS_EXPORT_INTERVAL": "5000",
-  "OTEL_LOG_USER_PROMPTS": "1",
-  "OTEL_RESOURCE_ATTRIBUTES": "service.name=claude-code,user.id=<you>"
+  "OTEL_LOG_USER_PROMPTS": "1"
 }
 ```
+
+`OTEL_RESOURCE_ATTRIBUTES` is intentionally **not** set in `settings.json`. Claude Code overrides the shell environment with these values at startup, so setting it here would clobber the optional shell wrapper that tags each session with `project=<repo>` (see [Per-project cost](#per-project-cost-shell-wrapper)). The OTEL SDK falls back to a default service name when nothing is set, so this is safe to leave unset.
 
 **Restart Claude Code** after the stack is up. Env vars in `settings.json` are read at startup.
 
