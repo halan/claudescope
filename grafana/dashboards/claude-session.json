@@ -1,0 +1,240 @@
+{
+  "title": "Claude Code — Session Explorer",
+  "uid": "claude-session",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-7d", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "session_id",
+        "label": "Session",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "Prometheus" },
+        "query": "label_values(claude_code_token_usage_tokens_total, session_id)",
+        "refresh": 2,
+        "includeAll": false,
+        "multi": false,
+        "sort": 1,
+        "description": "Pick a single session to deep-dive. Use the time range picker to widen if you don't see the session you want."
+      }
+    ]
+  },
+  "annotations": {
+    "list": [
+      {
+        "name": "Slash invocations",
+        "datasource": { "type": "loki", "uid": "Loki" },
+        "enable": true,
+        "iconColor": "blue",
+        "target": { "expr": "{service_name=\"claude-code\"} | session_id=\"$session_id\" | event_name=\"user_prompt\" | prompt =~ `^/.*`", "refId": "Slash" }
+      },
+      {
+        "name": "Internal errors",
+        "datasource": { "type": "loki", "uid": "Loki" },
+        "enable": true,
+        "iconColor": "red",
+        "target": { "expr": "{service_name=\"claude-code\"} | session_id=\"$session_id\" | event_name=\"internal_error\"", "refId": "Err" }
+      }
+    ]
+  },
+  "panels": [
+
+    { "id": 100, "type": "row", "title": "Session summary", "collapsed": false, "gridPos": { "x": 0, "y": 0, "w": 24, "h": 1 } },
+
+    { "id": 1, "type": "stat", "title": "Session",
+      "gridPos": { "x": 0, "y": 1, "w": 12, "h": 3 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [ { "expr": "vector(1)", "refId": "A", "instant": true } ],
+      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "text" }, "mappings": [ { "type": "value", "options": { "1": { "text": "$session_id" } } } ] } },
+      "options": { "graphMode": "none", "colorMode": "none", "textMode": "value", "reduceOptions": { "calc": "lastNotNull", "fields": "", "values": false } } },
+
+    { "id": 2, "type": "stat", "title": "Total tokens",
+      "gridPos": { "x": 12, "y": 1, "w": 4, "h": 3 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [ { "expr": "sum(claude_code_token_usage_tokens_total{session_id=\"$session_id\"})", "refId": "A" } ],
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0 } },
+      "options": { "graphMode": "area", "colorMode": "value", "textMode": "auto", "reduceOptions": { "calc": "lastNotNull", "fields": "", "values": false } } },
+
+    { "id": 3, "type": "stat", "title": "Est. spend",
+      "description": "Token-based estimate. See Overview header for caveat.",
+      "gridPos": { "x": 16, "y": 1, "w": 4, "h": 3 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [ { "expr": "sum(claude_code_cost_usage_USD_total{session_id=\"$session_id\"})", "refId": "A" } ],
+      "fieldConfig": { "defaults": { "unit": "currencyUSD", "color": { "mode": "fixed", "fixedColor": "text" } } },
+      "options": { "graphMode": "area", "colorMode": "none", "textMode": "auto", "reduceOptions": { "calc": "lastNotNull", "fields": "", "values": false } } },
+
+    { "id": 4, "type": "stat", "title": "Turns",
+      "description": "Number of api_request events in this session.",
+      "gridPos": { "x": 20, "y": 1, "w": 4, "h": 3 },
+      "datasource": { "type": "loki", "uid": "Loki" },
+      "targets": [ { "expr": "sum(count_over_time({service_name=\"claude-code\"} | session_id=\"$session_id\" | event_name=\"api_request\" [$__range]))", "refId": "A" } ],
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0 } },
+      "options": { "graphMode": "area", "colorMode": "value", "textMode": "auto", "reduceOptions": { "calc": "lastNotNull", "fields": "", "values": false } } },
+
+    { "id": 5, "type": "stat", "title": "Cache hit ratio",
+      "gridPos": { "x": 0, "y": 4, "w": 6, "h": 3 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [ { "expr": "sum(claude_code_token_usage_tokens_total{session_id=\"$session_id\",type=\"cacheRead\"}) / sum(claude_code_token_usage_tokens_total{session_id=\"$session_id\",type=~\"cacheRead|cacheCreation|input\"})", "refId": "A" } ],
+      "fieldConfig": { "defaults": { "unit": "percentunit", "decimals": 1, "thresholds": { "mode": "absolute", "steps": [ {"color": "red", "value": null}, {"color": "orange", "value": 0.5}, {"color": "green", "value": 0.8} ] } } },
+      "options": { "graphMode": "none", "colorMode": "value", "textMode": "auto", "reduceOptions": { "calc": "lastNotNull", "fields": "", "values": false } } },
+
+    { "id": 6, "type": "stat", "title": "Tool calls",
+      "gridPos": { "x": 6, "y": 4, "w": 6, "h": 3 },
+      "datasource": { "type": "loki", "uid": "Loki" },
+      "targets": [ { "expr": "sum(count_over_time({service_name=\"claude-code\"} | session_id=\"$session_id\" | event_name=\"tool_result\" [$__range]))", "refId": "A" } ],
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0 } },
+      "options": { "graphMode": "none", "colorMode": "value", "textMode": "auto", "reduceOptions": { "calc": "lastNotNull", "fields": "", "values": false } } },
+
+    { "id": 7, "type": "stat", "title": "User prompts",
+      "gridPos": { "x": 12, "y": 4, "w": 6, "h": 3 },
+      "datasource": { "type": "loki", "uid": "Loki" },
+      "targets": [ { "expr": "sum(count_over_time({service_name=\"claude-code\"} | session_id=\"$session_id\" | event_name=\"user_prompt\" [$__range]))", "refId": "A" } ],
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0 } },
+      "options": { "graphMode": "none", "colorMode": "value", "textMode": "auto", "reduceOptions": { "calc": "lastNotNull", "fields": "", "values": false } } },
+
+    { "id": 8, "type": "stat", "title": "Errors",
+      "gridPos": { "x": 18, "y": 4, "w": 6, "h": 3 },
+      "datasource": { "type": "loki", "uid": "Loki" },
+      "targets": [ { "expr": "sum(count_over_time({service_name=\"claude-code\"} | session_id=\"$session_id\" | event_name=\"internal_error\" [$__range]))", "refId": "A" } ],
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "thresholds": { "mode": "absolute", "steps": [ {"color": "green", "value": null}, {"color": "red", "value": 1} ] }, "noValue": "0" } },
+      "options": { "graphMode": "none", "colorMode": "value", "textMode": "auto", "reduceOptions": { "calc": "lastNotNull", "fields": "", "values": false } } },
+
+    { "id": 101, "type": "row", "title": "Cumulative tokens & cost", "collapsed": false, "gridPos": { "x": 0, "y": 7, "w": 24, "h": 1 } },
+
+    { "id": 9, "type": "timeseries", "title": "Cumulative tokens (by type)",
+      "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [ { "expr": "sum by (type) (claude_code_token_usage_tokens_total{session_id=\"$session_id\"})", "legendFormat": "{{type}}", "refId": "A" } ],
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "drawStyle": "line", "fillOpacity": 20, "stacking": { "mode": "normal" } } } } },
+
+    { "id": 10, "type": "timeseries", "title": "Cumulative est. spend",
+      "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [ { "expr": "sum(claude_code_cost_usage_USD_total{session_id=\"$session_id\"})", "legendFormat": "USD", "refId": "A" } ],
+      "fieldConfig": { "defaults": { "unit": "currencyUSD", "custom": { "drawStyle": "line", "fillOpacity": 20 } } } },
+
+    { "id": 102, "type": "row", "title": "Turns (api_requests)", "collapsed": false, "gridPos": { "x": 0, "y": 16, "w": 24, "h": 1 } },
+
+    { "id": 11, "type": "table", "title": "Every api_request in this session, in order",
+      "gridPos": { "x": 0, "y": 17, "w": 24, "h": 10 },
+      "datasource": { "type": "loki", "uid": "Loki" },
+      "targets": [ { "expr": "{service_name=\"claude-code\"} | session_id=\"$session_id\" | event_name=\"api_request\"", "refId": "A", "queryType": "range", "maxLines": 5000 } ],
+      "transformations": [
+        { "id": "extractFields", "options": { "source": "labels", "format": "json", "keepTime": true, "replace": true } },
+        { "id": "convertFieldType", "options": { "fields": {}, "conversions": [
+          { "targetField": "duration_ms",        "destinationType": "number" },
+          { "targetField": "input_tokens",       "destinationType": "number" },
+          { "targetField": "output_tokens",      "destinationType": "number" },
+          { "targetField": "cache_read_tokens",  "destinationType": "number" },
+          { "targetField": "cost_usd",           "destinationType": "number" }
+        ] } },
+        { "id": "sortBy", "options": { "sort": [ { "field": "Time", "desc": false } ] } },
+        { "id": "organize", "options": {
+          "indexByName": { "Time": 0, "duration_ms": 1, "model": 2, "input_tokens": 3, "output_tokens": 4, "cache_read_tokens": 5, "cost_usd": 6, "query_source": 7 },
+          "excludeByName": {
+            "request_id": true, "prompt_id": true, "event_name": true, "event_sequence": true,
+            "event_timestamp": true, "observed_timestamp": true, "host_arch": true, "os_type": true,
+            "os_version": true, "scope_name": true, "scope_version": true, "service_name": true,
+            "service_version": true, "terminal_type": true, "user_id": true, "session_id": true,
+            "cache_creation_tokens": true, "cost_usd_micros": true, "loki_attribute_labels": true,
+            "speed": true, "effort": true, "user_account_id": true, "user_account_uuid": true,
+            "user_email": true, "organization_id": true, "project": false
+          },
+          "renameByName": {
+            "duration_ms": "Duration (ms)", "model": "Model", "input_tokens": "Input",
+            "output_tokens": "Output", "cache_read_tokens": "Cache read",
+            "cost_usd": "Est. cost", "query_source": "Source", "project": "Project"
+          }
+        } }
+      ],
+      "fieldConfig": { "defaults": {}, "overrides": [
+        { "matcher": { "id": "byName", "options": "Duration (ms)" },
+          "properties": [
+            { "id": "unit", "value": "ms" },
+            { "id": "custom.cellOptions", "value": { "type": "color-background", "mode": "gradient" } },
+            { "id": "thresholds", "value": { "mode": "absolute", "steps": [ {"color": "green", "value": null}, {"color": "yellow", "value": 30000}, {"color": "red", "value": 120000} ] } }
+          ] },
+        { "matcher": { "id": "byName", "options": "Est. cost" },
+          "properties": [ { "id": "unit", "value": "currencyUSD" }, { "id": "decimals", "value": 4 } ] }
+      ] } },
+
+    { "id": 103, "type": "row", "title": "Tools called", "collapsed": false, "gridPos": { "x": 0, "y": 27, "w": 24, "h": 1 } },
+
+    { "id": 12, "type": "table", "title": "Tool calls in order",
+      "gridPos": { "x": 0, "y": 28, "w": 14, "h": 10 },
+      "datasource": { "type": "loki", "uid": "Loki" },
+      "targets": [ { "expr": "{service_name=\"claude-code\"} | session_id=\"$session_id\" | event_name=\"tool_result\"", "refId": "A", "queryType": "range", "maxLines": 5000 } ],
+      "transformations": [
+        { "id": "extractFields", "options": { "source": "labels", "format": "json", "keepTime": true, "replace": true } },
+        { "id": "convertFieldType", "options": { "fields": {}, "conversions": [
+          { "targetField": "duration_ms", "destinationType": "number" },
+          { "targetField": "tool_input_size_bytes", "destinationType": "number" },
+          { "targetField": "tool_result_size_bytes", "destinationType": "number" }
+        ] } },
+        { "id": "sortBy", "options": { "sort": [ { "field": "Time", "desc": false } ] } },
+        { "id": "organize", "options": {
+          "indexByName": { "Time": 0, "tool_name": 1, "duration_ms": 2, "tool_input_size_bytes": 3, "tool_result_size_bytes": 4, "success": 5 },
+          "excludeByName": {
+            "tool_use_id": true, "request_id": true, "prompt_id": true, "event_name": true,
+            "event_sequence": true, "event_timestamp": true, "observed_timestamp": true,
+            "host_arch": true, "os_type": true, "os_version": true, "scope_name": true,
+            "scope_version": true, "service_name": true, "service_version": true,
+            "terminal_type": true, "user_id": true, "session_id": true, "decision": true,
+            "decision_source": true, "decision_type": true, "loki_attribute_labels": true
+          },
+          "renameByName": {
+            "tool_name": "Tool", "duration_ms": "Duration (ms)",
+            "tool_input_size_bytes": "In (bytes)", "tool_result_size_bytes": "Out (bytes)",
+            "success": "OK"
+          }
+        } }
+      ],
+      "fieldConfig": { "defaults": {}, "overrides": [
+        { "matcher": { "id": "byName", "options": "Duration (ms)" }, "properties": [ { "id": "unit", "value": "ms" } ] },
+        { "matcher": { "id": "byName", "options": "In (bytes)" }, "properties": [ { "id": "unit", "value": "bytes" } ] },
+        { "matcher": { "id": "byName", "options": "Out (bytes)" }, "properties": [ { "id": "unit", "value": "bytes" } ] },
+        { "matcher": { "id": "byName", "options": "OK" }, "properties": [
+          { "id": "custom.cellOptions", "value": { "type": "color-text" } },
+          { "id": "mappings", "value": [
+            { "type": "value", "options": { "true":  { "text": "✓", "color": "green" }, "false": { "text": "✗", "color": "red" } } }
+          ] }
+        ] }
+      ] } },
+
+    { "id": 13, "type": "bargauge", "title": "Tools by count in this session",
+      "gridPos": { "x": 14, "y": 28, "w": 10, "h": 10 },
+      "datasource": { "type": "loki", "uid": "Loki" },
+      "targets": [ { "expr": "sum by (tool_name) (count_over_time({service_name=\"claude-code\"} | session_id=\"$session_id\" | event_name=\"tool_result\" [$__range]))", "legendFormat": "{{tool_name}}", "refId": "A" } ],
+      "options": { "reduceOptions": { "calc": "lastNotNull", "fields": "", "values": false }, "orientation": "horizontal", "displayMode": "gradient" } },
+
+    { "id": 104, "type": "row", "title": "User prompts", "collapsed": false, "gridPos": { "x": 0, "y": 38, "w": 24, "h": 1 } },
+
+    { "id": 14, "type": "table", "title": "Every prompt in this session",
+      "description": "Requires OTEL_LOG_USER_PROMPTS=1. The prompt column is the literal text you typed.",
+      "gridPos": { "x": 0, "y": 39, "w": 24, "h": 12 },
+      "datasource": { "type": "loki", "uid": "Loki" },
+      "targets": [ { "expr": "{service_name=\"claude-code\"} | session_id=\"$session_id\" | event_name=\"user_prompt\"", "refId": "A", "queryType": "range", "maxLines": 5000 } ],
+      "transformations": [
+        { "id": "extractFields", "options": { "source": "labels", "format": "json", "keepTime": true, "replace": true } },
+        { "id": "convertFieldType", "options": { "fields": {}, "conversions": [ { "targetField": "prompt_length", "destinationType": "number" } ] } },
+        { "id": "sortBy", "options": { "sort": [ { "field": "Time", "desc": false } ] } },
+        { "id": "organize", "options": {
+          "indexByName": { "Time": 0, "prompt": 1, "prompt_length": 2 },
+          "excludeByName": {
+            "prompt_id": true, "event_name": true, "event_sequence": true,
+            "event_timestamp": true, "observed_timestamp": true, "host_arch": true,
+            "os_type": true, "os_version": true, "scope_name": true, "scope_version": true,
+            "service_name": true, "service_version": true, "terminal_type": true,
+            "user_id": true, "session_id": true, "loki_attribute_labels": true
+          },
+          "renameByName": { "prompt": "Prompt", "prompt_length": "Length" }
+        } }
+      ],
+      "fieldConfig": { "defaults": {}, "overrides": [
+        { "matcher": { "id": "byName", "options": "Prompt" }, "properties": [ { "id": "custom.width", "value": 800 } ] }
+      ] } }
+
+  ]
+}
