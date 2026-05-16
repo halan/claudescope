@@ -511,6 +511,39 @@ groups:
         labels:
           severity: warning
           component: cost
+
+      - uid: claudescope-skill-cost-runaway
+        title: Skill cost runaway
+        condition: B
+        for: 10m
+        noDataState: OK
+        execErrState: Error
+        data:
+          - refId: A
+            relativeTimeRange: { from: 3600, to: 0 }
+            datasourceUid: Prometheus
+            model:
+              refId: A
+              instant: true
+              expr: max by (skill) (delta(claude_code_skill_cost_usd[1h]))
+          - refId: B
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: threshold
+              expression: A
+              conditions:
+                - type: query
+                  evaluator: { type: gt, params: [3] }
+        annotations:
+          summary: "Skill {{ $labels.skill }} burned > $3 in the last hour"
+          description: |
+            Per-skill spend change over the last hour: {{ $values.A.Value | printf "%.2f" }} USD.
+        labels:
+          severity: warning
+          component: cost
+          skill: "{{ $labels.skill }}"
 YAML
 
 cat > "$TARGET_DIR/grafana/provisioning/alerting/rules-errors.yaml" <<'YAML'

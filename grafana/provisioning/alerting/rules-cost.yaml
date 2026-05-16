@@ -85,3 +85,41 @@ groups:
         labels:
           severity: warning
           component: cost
+
+      - uid: claudescope-skill-cost-runaway
+        title: Skill cost runaway
+        condition: B
+        for: 10m
+        noDataState: OK
+        execErrState: Error
+        data:
+          - refId: A
+            relativeTimeRange: { from: 3600, to: 0 }
+            datasourceUid: Prometheus
+            model:
+              refId: A
+              instant: true
+              # `claude_code_skill_cost_usd` is a gauge (24h sliding window
+              # published by the correlator), so delta() is the right tool
+              # here — rate() would error on a non-counter. Negative deltas
+              # (idle, spend rolling out of window) are filtered by `> 3`.
+              expr: max by (skill) (delta(claude_code_skill_cost_usd[1h]))
+          - refId: B
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: threshold
+              expression: A
+              conditions:
+                - type: query
+                  evaluator: { type: gt, params: [3] }
+        annotations:
+          summary: "Skill {{ $labels.skill }} burned > $3 in the last hour"
+          description: |
+            Per-skill spend change over the last hour: {{ $values.A.Value | printf "%.2f" }} USD.
+            Open the "Cost by skill" panel in Grafana to investigate.
+        labels:
+          severity: warning
+          component: cost
+          skill: "{{ $labels.skill }}"
