@@ -1,0 +1,122 @@
+{
+  "title": "Claude Code — Performance",
+  "uid": "claude-performance",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-6h", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "session_id",
+        "label": "Session",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "Prometheus" },
+        "query": "label_values(claude_code_token_usage_tokens_total, session_id)",
+        "refresh": 2,
+        "includeAll": true,
+        "allValue": ".+",
+        "multi": true,
+        "current": { "text": "All", "value": "$__all" },
+        "sort": 1
+      }
+    ]
+  },
+  "annotations": {
+    "list": [
+      {
+        "name": "API errors",
+        "datasource": { "type": "loki", "uid": "Loki" },
+        "enable": true,
+        "iconColor": "red",
+        "target": { "expr": "{service_name=\"claude-code\"} | event_name=\"api_error\"", "refId": "Anno" }
+      }
+    ]
+  },
+  "panels": [
+
+    { "id": 100, "type": "row", "title": "API request latency — headline", "collapsed": false, "gridPos": { "x": 0, "y": 0, "w": 24, "h": 1 } },
+
+    { "id": 1, "type": "stat", "title": "API requests in range",
+      "gridPos": { "x": 0, "y": 1, "w": 6, "h": 4 },
+      "datasource": { "type": "loki", "uid": "Loki" },
+      "targets": [ { "expr": "sum(count_over_time({service_name=\"claude-code\"} | event_name=\"api_request\" | session_id=~\"$session_id\" [$__range]))", "refId": "A" } ],
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0 } },
+      "options": { "graphMode": "area", "colorMode": "value", "textMode": "auto", "reduceOptions": { "calc": "lastNotNull", "fields": "", "values": false } } },
+
+    { "id": 2, "type": "stat", "title": "p50 duration",
+      "gridPos": { "x": 6, "y": 1, "w": 6, "h": 4 },
+      "datasource": { "type": "loki", "uid": "Loki" },
+      "targets": [ { "expr": "quantile_over_time(0.50, {service_name=\"claude-code\"} | event_name=\"api_request\" | session_id=~\"$session_id\" | unwrap duration_ms [$__range])", "refId": "A" } ],
+      "fieldConfig": { "defaults": { "unit": "ms", "decimals": 0 } },
+      "options": { "graphMode": "area", "colorMode": "value", "textMode": "auto", "reduceOptions": { "calc": "lastNotNull", "fields": "", "values": false } } },
+
+    { "id": 3, "type": "stat", "title": "p95 duration",
+      "gridPos": { "x": 12, "y": 1, "w": 6, "h": 4 },
+      "datasource": { "type": "loki", "uid": "Loki" },
+      "targets": [ { "expr": "quantile_over_time(0.95, {service_name=\"claude-code\"} | event_name=\"api_request\" | session_id=~\"$session_id\" | unwrap duration_ms [$__range])", "refId": "A" } ],
+      "fieldConfig": { "defaults": { "unit": "ms", "decimals": 0, "thresholds": { "mode": "absolute", "steps": [ {"color": "green", "value": null}, {"color": "yellow", "value": 5000}, {"color": "red", "value": 15000} ] } } },
+      "options": { "graphMode": "area", "colorMode": "value", "textMode": "auto", "reduceOptions": { "calc": "lastNotNull", "fields": "", "values": false } } },
+
+    { "id": 4, "type": "stat", "title": "p99 duration",
+      "gridPos": { "x": 18, "y": 1, "w": 6, "h": 4 },
+      "datasource": { "type": "loki", "uid": "Loki" },
+      "targets": [ { "expr": "quantile_over_time(0.99, {service_name=\"claude-code\"} | event_name=\"api_request\" | session_id=~\"$session_id\" | unwrap duration_ms [$__range])", "refId": "A" } ],
+      "fieldConfig": { "defaults": { "unit": "ms", "decimals": 0, "thresholds": { "mode": "absolute", "steps": [ {"color": "green", "value": null}, {"color": "yellow", "value": 10000}, {"color": "red", "value": 30000} ] } } },
+      "options": { "graphMode": "area", "colorMode": "value", "textMode": "auto", "reduceOptions": { "calc": "lastNotNull", "fields": "", "values": false } } },
+
+    { "id": 101, "type": "row", "title": "Latency over time", "collapsed": false, "gridPos": { "x": 0, "y": 5, "w": 24, "h": 1 } },
+
+    { "id": 5, "type": "timeseries", "title": "api_request percentiles",
+      "gridPos": { "x": 0, "y": 6, "w": 12, "h": 8 },
+      "datasource": { "type": "loki", "uid": "Loki" },
+      "targets": [
+        { "expr": "quantile_over_time(0.50, {service_name=\"claude-code\"} | event_name=\"api_request\" | session_id=~\"$session_id\" | unwrap duration_ms [5m])", "legendFormat": "p50", "refId": "A" },
+        { "expr": "quantile_over_time(0.95, {service_name=\"claude-code\"} | event_name=\"api_request\" | session_id=~\"$session_id\" | unwrap duration_ms [5m])", "legendFormat": "p95", "refId": "B" },
+        { "expr": "quantile_over_time(0.99, {service_name=\"claude-code\"} | event_name=\"api_request\" | session_id=~\"$session_id\" | unwrap duration_ms [5m])", "legendFormat": "p99", "refId": "C" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "ms" } } },
+
+    { "id": 6, "type": "timeseries", "title": "p95 by model",
+      "gridPos": { "x": 12, "y": 6, "w": 12, "h": 8 },
+      "datasource": { "type": "loki", "uid": "Loki" },
+      "targets": [ { "expr": "quantile_over_time(0.95, {service_name=\"claude-code\"} | event_name=\"api_request\" | session_id=~\"$session_id\" | unwrap duration_ms [5m]) by (model)", "legendFormat": "{{model}}", "refId": "A" } ],
+      "fieldConfig": { "defaults": { "unit": "ms" } } },
+
+    { "id": 102, "type": "row", "title": "Slowest individual calls", "collapsed": false, "gridPos": { "x": 0, "y": 14, "w": 24, "h": 1 } },
+
+    { "id": 7, "type": "table", "title": "Top 10 slowest api_requests",
+      "description": "One row per request_id, ranked by duration. Useful for spotting individual outliers.",
+      "gridPos": { "x": 0, "y": 15, "w": 24, "h": 10 },
+      "datasource": { "type": "loki", "uid": "Loki" },
+      "targets": [ {
+        "expr": "topk(10, max by (request_id, model, session_id, query_source) (max_over_time({service_name=\"claude-code\"} | event_name=\"api_request\" | session_id=~\"$session_id\" | unwrap duration_ms [$__range])))",
+        "refId": "A",
+        "queryType": "instant"
+      } ],
+      "transformations": [
+        { "id": "organize", "options": {
+          "excludeByName": { "Time": true },
+          "renameByName": { "Value": "duration (ms)", "request_id": "Request", "model": "Model", "session_id": "Session", "query_source": "Source" }
+        } },
+        { "id": "sortBy", "options": { "fields": [], "sort": [ { "field": "duration (ms)", "desc": true } ] } }
+      ],
+      "fieldConfig": { "defaults": {}, "overrides": [ { "matcher": { "id": "byName", "options": "duration (ms)" }, "properties": [ { "id": "unit", "value": "ms" }, { "id": "custom.cellOptions", "value": { "type": "color-background" } } ] } ] } },
+
+    { "id": 103, "type": "row", "title": "Tool execution latency", "collapsed": false, "gridPos": { "x": 0, "y": 25, "w": 24, "h": 1 } },
+
+    { "id": 8, "type": "timeseries", "title": "p95 tool execution by tool",
+      "gridPos": { "x": 0, "y": 26, "w": 12, "h": 8 },
+      "datasource": { "type": "loki", "uid": "Loki" },
+      "targets": [ { "expr": "quantile_over_time(0.95, {service_name=\"claude-code\"} | event_name=\"tool_result\" | session_id=~\"$session_id\" | unwrap duration_ms [5m]) by (tool_name)", "legendFormat": "{{tool_name}}", "refId": "A" } ],
+      "fieldConfig": { "defaults": { "unit": "ms" } } },
+
+    { "id": 9, "type": "bargauge", "title": "Avg tool duration (last window)",
+      "gridPos": { "x": 12, "y": 26, "w": 12, "h": 8 },
+      "datasource": { "type": "loki", "uid": "Loki" },
+      "targets": [ { "expr": "avg by (tool_name) (avg_over_time({service_name=\"claude-code\"} | event_name=\"tool_result\" | session_id=~\"$session_id\" | unwrap duration_ms [$__range]))", "legendFormat": "{{tool_name}}", "refId": "A" } ],
+      "fieldConfig": { "defaults": { "unit": "ms", "decimals": 0 } },
+      "options": { "reduceOptions": { "calc": "lastNotNull", "fields": "", "values": false }, "orientation": "horizontal", "displayMode": "gradient" } }
+
+  ]
+}
