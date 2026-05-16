@@ -117,8 +117,8 @@ Common labels: `model`, `session_id`, `user_id`, `tool_name`, `type`, `decision`
 The OTLP→Loki exporter stores OTLP attributes as **structured metadata** (not stream labels). The only real stream label is `service_name`. Filter and aggregate on attributes using a parser stage (`| key="value"`).
 
 Available structured-metadata fields on each event:
-- `event_name` — e.g. `user_prompt`, `tool_result`, `api_request`, `api_error`, `skill_activated`, `tool_decision`
-- `tool_name`, `skill_name`, `model`, `session_id`, `user_id`, `decision_type`
+- `event_name` — e.g. `user_prompt`, `tool_result`, `api_request`, `tool_decision`, `skill_activated`, `internal_error`, `mcp_server_connection`, `feedback_survey`
+- `tool_name`, `skill_name`, `model`, `session_id`, `user_id`, `decision`, `source`, `success`, `status`, `error_name`, `transport_type`
 
 The log line itself is the prefixed event name (e.g. `claude_code.tool_result`).
 

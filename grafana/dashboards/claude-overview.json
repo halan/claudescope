@@ -8,12 +8,12 @@
   "annotations": {
     "list": [
       {
-        "name": "API errors",
+        "name": "Internal errors",
         "datasource": { "type": "loki", "uid": "Loki" },
         "enable": true,
         "iconColor": "red",
         "target": {
-          "expr": "{service_name=\"claude-code\"} | event_name=\"api_error\"",
+          "expr": "{service_name=\"claude-code\"} | event_name=\"internal_error\"",
           "refId": "Anno"
         }
       }

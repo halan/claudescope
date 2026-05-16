@@ -1,0 +1,135 @@
+{
+  "title": "Claude Code — Errors & Reliability",
+  "uid": "claude-errors",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-24h", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "session_id",
+        "label": "Session",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "Prometheus" },
+        "query": "label_values(claude_code_token_usage_tokens_total, session_id)",
+        "refresh": 2,
+        "includeAll": true,
+        "allValue": ".+",
+        "multi": true,
+        "current": { "text": "All", "value": "$__all" },
+        "sort": 1
+      }
+    ]
+  },
+  "panels": [
+
+    { "id": 100, "type": "row", "title": "Headline", "collapsed": false, "gridPos": { "x": 0, "y": 0, "w": 24, "h": 1 } },
+
+    { "id": 1, "type": "stat", "title": "Internal errors",
+      "description": "Count of claude_code.internal_error events. These are client-side errors (network, parse, etc.) — distinct from API-level failures, which Claude Code does not emit a separate event for.",
+      "gridPos": { "x": 0, "y": 1, "w": 6, "h": 4 },
+      "datasource": { "type": "loki", "uid": "Loki" },
+      "targets": [ { "expr": "sum(count_over_time({service_name=\"claude-code\"} | event_name=\"internal_error\" | session_id=~\"$session_id\" [$__range]))", "refId": "A" } ],
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 1 }, { "color": "red", "value": 10 } ] }, "noValue": "0" } },
+      "options": { "graphMode": "area", "colorMode": "value", "textMode": "auto", "reduceOptions": { "calc": "lastNotNull", "fields": "", "values": false } } },
+
+    { "id": 2, "type": "stat", "title": "Tool failure rate",
+      "description": "tool_result events where success=\"false\" divided by all tool_result events.",
+      "gridPos": { "x": 6, "y": 1, "w": 6, "h": 4 },
+      "datasource": { "type": "loki", "uid": "Loki" },
+      "targets": [ { "expr": "sum(count_over_time({service_name=\"claude-code\"} | event_name=\"tool_result\" | session_id=~\"$session_id\" | success=\"false\" [$__range])) / sum(count_over_time({service_name=\"claude-code\"} | event_name=\"tool_result\" | session_id=~\"$session_id\" [$__range]))", "refId": "A" } ],
+      "fieldConfig": { "defaults": { "unit": "percentunit", "decimals": 2, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 0.01 }, { "color": "red", "value": 0.05 } ] }, "noValue": "0%" } },
+      "options": { "graphMode": "area", "colorMode": "value", "textMode": "auto", "reduceOptions": { "calc": "lastNotNull", "fields": "", "values": false } } },
+
+    { "id": 3, "type": "stat", "title": "Permission rejects",
+      "description": "tool_decision events with decision=\"reject\". Note: if all your tools are pre-allowed via config, this will always be 0 — rejects only fire when you actively deny a prompt.",
+      "gridPos": { "x": 12, "y": 1, "w": 6, "h": 4 },
+      "datasource": { "type": "loki", "uid": "Loki" },
+      "targets": [ { "expr": "sum(count_over_time({service_name=\"claude-code\"} | event_name=\"tool_decision\" | session_id=~\"$session_id\" | decision=\"reject\" [$__range]))", "refId": "A" } ],
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "noValue": "0" } },
+      "options": { "graphMode": "area", "colorMode": "value", "textMode": "auto", "reduceOptions": { "calc": "lastNotNull", "fields": "", "values": false } } },
+
+    { "id": 4, "type": "stat", "title": "MCP connection failures",
+      "description": "mcp_server_connection events with status != connected.",
+      "gridPos": { "x": 18, "y": 1, "w": 6, "h": 4 },
+      "datasource": { "type": "loki", "uid": "Loki" },
+      "targets": [ { "expr": "sum(count_over_time({service_name=\"claude-code\"} | event_name=\"mcp_server_connection\" | session_id=~\"$session_id\" | status!=\"connected\" [$__range]))", "refId": "A" } ],
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "noValue": "0" } },
+      "options": { "graphMode": "area", "colorMode": "value", "textMode": "auto", "reduceOptions": { "calc": "lastNotNull", "fields": "", "values": false } } },
+
+    { "id": 101, "type": "row", "title": "Errors over time", "collapsed": false, "gridPos": { "x": 0, "y": 5, "w": 24, "h": 1 } },
+
+    { "id": 5, "type": "timeseries", "title": "Internal errors rate",
+      "gridPos": { "x": 0, "y": 6, "w": 12, "h": 8 },
+      "datasource": { "type": "loki", "uid": "Loki" },
+      "targets": [ { "expr": "sum(rate({service_name=\"claude-code\"} | event_name=\"internal_error\" | session_id=~\"$session_id\" [5m]))", "legendFormat": "errors/sec", "refId": "A" } ],
+      "fieldConfig": { "defaults": { "unit": "short" } } },
+
+    { "id": 6, "type": "timeseries", "title": "Tool failure rate over time",
+      "gridPos": { "x": 12, "y": 6, "w": 12, "h": 8 },
+      "datasource": { "type": "loki", "uid": "Loki" },
+      "targets": [ { "expr": "sum(rate({service_name=\"claude-code\"} | event_name=\"tool_result\" | session_id=~\"$session_id\" | success=\"false\" [5m])) / sum(rate({service_name=\"claude-code\"} | event_name=\"tool_result\" | session_id=~\"$session_id\" [5m]))", "legendFormat": "failure %", "refId": "A" } ],
+      "fieldConfig": { "defaults": { "unit": "percentunit" } } },
+
+    { "id": 102, "type": "row", "title": "Recent errors", "collapsed": false, "gridPos": { "x": 0, "y": 14, "w": 24, "h": 1 } },
+
+    { "id": 7, "type": "table", "title": "Internal errors (table)",
+      "description": "Every internal_error event. Session column links back to the Overview filtered to that session.",
+      "gridPos": { "x": 0, "y": 15, "w": 24, "h": 8 },
+      "datasource": { "type": "loki", "uid": "Loki" },
+      "targets": [ { "expr": "{service_name=\"claude-code\"} | event_name=\"internal_error\" | session_id=~\"$session_id\"", "refId": "A", "queryType": "range", "maxLines": 200 } ],
+      "transformations": [
+        { "id": "extractFields", "options": { "source": "labels", "format": "json", "keepTime": true, "replace": true } },
+        { "id": "sortBy", "options": { "sort": [ { "field": "Time", "desc": true } ] } },
+        { "id": "organize", "options": {
+          "indexByName": { "Time": 0, "error_name": 1, "detected_level": 2, "session_id": 3, "prompt_id": 4 },
+          "excludeByName": {
+            "event_name": true, "event_sequence": true, "event_timestamp": true,
+            "observed_timestamp": true, "host_arch": true, "os_type": true,
+            "os_version": true, "scope_name": true, "scope_version": true,
+            "service_name": true, "service_version": true, "terminal_type": true,
+            "user_id": true, "user_account_id": true, "user_account_uuid": true,
+            "user_email": true, "organization_id": true, "loki_attribute_labels": true
+          },
+          "renameByName": { "error_name": "Error", "detected_level": "Level", "session_id": "Session", "prompt_id": "Prompt" }
+        } }
+      ],
+      "fieldConfig": { "defaults": { "noValue": "No internal errors in range — congratulations" }, "overrides": [
+        { "matcher": { "id": "byName", "options": "Session" },
+          "properties": [ { "id": "links", "value": [ { "title": "Filter Overview by this session", "url": "/d/claude-overview?var-session_id=${__data.fields.Session}" } ] } ] }
+      ] } },
+
+    { "id": 103, "type": "row", "title": "Tool reliability", "collapsed": false, "gridPos": { "x": 0, "y": 23, "w": 24, "h": 1 } },
+
+    { "id": 8, "type": "bargauge", "title": "Tool failures by tool",
+      "gridPos": { "x": 0, "y": 24, "w": 12, "h": 8 },
+      "datasource": { "type": "loki", "uid": "Loki" },
+      "targets": [ { "expr": "sum by (tool_name) (count_over_time({service_name=\"claude-code\"} | event_name=\"tool_result\" | session_id=~\"$session_id\" | success=\"false\" [$__range]))", "legendFormat": "{{tool_name}}", "refId": "A" } ],
+      "fieldConfig": { "defaults": { "noValue": "No tool failures in range" } },
+      "options": { "reduceOptions": { "calc": "lastNotNull", "fields": "", "values": false }, "orientation": "horizontal", "displayMode": "gradient" } },
+
+    { "id": 9, "type": "bargauge", "title": "Tool decisions by outcome",
+      "description": "How tool calls are being authorized. 'config' = auto-allowed by your allowlist; 'user_temporary' = you clicked allow once; 'user_permanent' = you added to allowlist. Anything with decision=\"reject\" means you actively denied.",
+      "gridPos": { "x": 12, "y": 24, "w": 12, "h": 8 },
+      "datasource": { "type": "loki", "uid": "Loki" },
+      "targets": [ { "expr": "sum by (decision, source) (count_over_time({service_name=\"claude-code\"} | event_name=\"tool_decision\" | session_id=~\"$session_id\" [$__range]))", "legendFormat": "{{decision}} ({{source}})", "refId": "A" } ],
+      "options": { "reduceOptions": { "calc": "lastNotNull", "fields": "", "values": false }, "orientation": "horizontal", "displayMode": "gradient" } },
+
+    { "id": 104, "type": "row", "title": "MCP servers", "collapsed": false, "gridPos": { "x": 0, "y": 32, "w": 24, "h": 1 } },
+
+    { "id": 10, "type": "bargauge", "title": "MCP connection events by status",
+      "gridPos": { "x": 0, "y": 33, "w": 12, "h": 6 },
+      "datasource": { "type": "loki", "uid": "Loki" },
+      "targets": [ { "expr": "sum by (status, transport_type) (count_over_time({service_name=\"claude-code\"} | event_name=\"mcp_server_connection\" | session_id=~\"$session_id\" [$__range]))", "legendFormat": "{{status}} ({{transport_type}})", "refId": "A" } ],
+      "fieldConfig": { "defaults": { "noValue": "No MCP connections in range" } },
+      "options": { "reduceOptions": { "calc": "lastNotNull", "fields": "", "values": false }, "orientation": "horizontal", "displayMode": "gradient" } },
+
+    { "id": 11, "type": "timeseries", "title": "MCP connection latency p95",
+      "gridPos": { "x": 12, "y": 33, "w": 12, "h": 6 },
+      "datasource": { "type": "loki", "uid": "Loki" },
+      "targets": [ { "expr": "quantile_over_time(0.95, {service_name=\"claude-code\"} | event_name=\"mcp_server_connection\" | session_id=~\"$session_id\" | unwrap duration_ms [5m]) by ()", "legendFormat": "p95 ms", "refId": "A" } ],
+      "fieldConfig": { "defaults": { "unit": "ms", "noValue": "No MCP connections in range" } } }
+
+  ]
+}
