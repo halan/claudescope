@@ -1,0 +1,44 @@
+apiVersion: 1
+
+# Reliability alerts based on Loki event streams.
+groups:
+  - orgId: 1
+    name: error-alerts
+    folder: claudescope
+    interval: 1m
+    rules:
+      - uid: claudescope-error-spike
+        title: API error spike
+        condition: B
+        for: 10m
+        noDataState: OK
+        execErrState: Error
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: Loki
+            model:
+              refId: A
+              # Errors per second over the last 10 minutes.
+              # 0.1/s = 6/min = 60/10m — the spike threshold the alert checks.
+              expr: sum(rate({service_name="claude-code"} | event_name="api_error" [10m]))
+              queryType: instant
+          - refId: B
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: threshold
+              expression: A
+              conditions:
+                - type: query
+                  evaluator: { type: gt, params: [0.1] }
+        annotations:
+          summary: "Claude Code API errors spiking"
+          description: |
+            api_error events exceeded 0.1/sec (>= 60 over 10 min). Current rate:
+            {{ $values.A.Value | printf "%.3f" }}/sec.
+          runbook_url: "http://localhost:3000/d/claude-errors"
+        labels:
+          severity: warning
+          component: reliability

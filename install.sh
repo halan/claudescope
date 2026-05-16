@@ -513,6 +513,49 @@ groups:
           component: cost
 YAML
 
+cat > "$TARGET_DIR/grafana/provisioning/alerting/rules-errors.yaml" <<'YAML'
+apiVersion: 1
+groups:
+  - orgId: 1
+    name: error-alerts
+    folder: claudescope
+    interval: 1m
+    rules:
+      - uid: claudescope-error-spike
+        title: API error spike
+        condition: B
+        for: 10m
+        noDataState: OK
+        execErrState: Error
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: Loki
+            model:
+              refId: A
+              expr: sum(rate({service_name="claude-code"} | event_name="api_error" [10m]))
+              queryType: instant
+          - refId: B
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: threshold
+              expression: A
+              conditions:
+                - type: query
+                  evaluator: { type: gt, params: [0.1] }
+        annotations:
+          summary: "Claude Code API errors spiking"
+          description: |
+            api_error events exceeded 0.1/sec (>= 60 over 10 min). Current rate:
+            {{ $values.A.Value | printf "%.3f" }}/sec.
+          runbook_url: "http://localhost:3000/d/claude-errors"
+        labels:
+          severity: warning
+          component: reliability
+YAML
+
 cat > "$TARGET_DIR/grafana/dashboards/claude-overview.json" <<'JSON'
 {
   "title": "Claude Code — Overview",

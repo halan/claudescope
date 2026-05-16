@@ -8,6 +8,7 @@ claudescope ships Grafana-provisioned alert rules that watch the Prometheus metr
 |---|---|---|
 | Daily cost cap exceeded | `claudescope-daily-cost-cap` | $10 / 24h |
 | Expensive single session | `claudescope-expensive-session` | $5 / session / 1h |
+| API error spike | `claudescope-error-spike` | > 0.1 api_error/sec for 10m |
 
 All alerts land in the `claudescope` folder under Alerting → Alert rules.
 
