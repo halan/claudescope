@@ -2,7 +2,7 @@
   "title": "Claude Code — Errors & Reliability",
   "uid": "claude-errors",
   "schemaVersion": 39,
-  "version": 1,
+  "version": 2,
   "refresh": "30s",
   "time": { "from": "now-24h", "to": "now" },
   "templating": {
@@ -123,6 +123,24 @@
       "datasource": { "type": "loki", "uid": "Loki" },
       "targets": [ { "expr": "sum by (status, transport_type) (count_over_time({service_name=\"claude-code\"} | event_name=\"mcp_server_connection\" | session_id=~\"$session_id\" [$__range]))", "legendFormat": "{{status}} ({{transport_type}})", "refId": "A" } ],
       "fieldConfig": { "defaults": { "noValue": "No MCP connections in range" } },
+      "options": { "reduceOptions": { "calc": "lastNotNull", "fields": "", "values": false }, "orientation": "horizontal", "displayMode": "gradient" } },
+
+    { "id": 105, "type": "row", "title": "By skill (correlated)", "collapsed": false, "gridPos": { "x": 0, "y": 39, "w": 24, "h": 1 } },
+
+    { "id": 12, "type": "bargauge", "title": "Errors per skill (correlated, last 24h)",
+      "description": "From the correlator sidecar. Count of internal_error events attributed to each /<skill>. Cross-session; does not honor the Session selector.",
+      "gridPos": { "x": 0, "y": 40, "w": 12, "h": 6 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [ { "expr": "sum by (skill) (claude_code_skill_errors) > 0", "legendFormat": "{{skill}}", "refId": "A" } ],
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "noValue": "No errors attributed to any skill" } },
+      "options": { "reduceOptions": { "calc": "lastNotNull", "fields": "", "values": false }, "orientation": "horizontal", "displayMode": "gradient" } },
+
+    { "id": 13, "type": "bargauge", "title": "Error rate per skill (errors / turns)",
+      "description": "Per-skill error frequency. Useful for spotting unreliable workflows. Skills with zero turns are filtered out.",
+      "gridPos": { "x": 12, "y": 40, "w": 12, "h": 6 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [ { "expr": "sum by (skill) (claude_code_skill_errors) / sum by (skill) (claude_code_skill_turns)", "legendFormat": "{{skill}}", "refId": "A" } ],
+      "fieldConfig": { "defaults": { "unit": "percentunit", "decimals": 2, "noValue": "No errors yet", "thresholds": { "mode": "absolute", "steps": [ {"color": "green", "value": null}, {"color": "yellow", "value": 0.01}, {"color": "red", "value": 0.05} ] } } },
       "options": { "reduceOptions": { "calc": "lastNotNull", "fields": "", "values": false }, "orientation": "horizontal", "displayMode": "gradient" } },
 
     { "id": 11, "type": "timeseries", "title": "MCP connection latency p95",

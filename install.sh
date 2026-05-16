@@ -177,6 +177,7 @@ Exposes Prometheus metrics on :9100:
   claude_code_skill_cost_usd{skill}        — USD in the last WINDOW_HOURS
   claude_code_skill_turns{skill}           — number of api_request turns
   claude_code_skill_duration_ms{skill}     — sum of api_request duration_ms
+  claude_code_skill_errors{skill}          — count of internal_error events
 
 Gauges, not counters — each scrape reflects the current window snapshot.
 """
@@ -217,13 +218,18 @@ duration_g = Gauge(
     "Sum of api_request duration_ms attributed to a slash-invoked skill",
     ["skill"],
 )
+errors_g = Gauge(
+    "claude_code_skill_errors",
+    "internal_error events attributed to a slash-invoked skill",
+    ["skill"],
+)
 
 
 def fetch_events():
     end = int(time.time() * 1e9)
     start = end - WINDOW_HOURS * 3600 * 10**9
     params = {
-        "query": '{service_name="claude-code"} | event_name=~"user_prompt|api_request"',
+        "query": '{service_name="claude-code"} | event_name=~"user_prompt|api_request|internal_error"',
         "limit": QUERY_LIMIT,
         "start": start,
         "end": end,
@@ -257,6 +263,7 @@ def correlate(events):
     cost = defaultdict(float)
     turns = defaultdict(int)
     duration = defaultdict(float)
+    errors = defaultdict(int)
 
     for evs in by_session.values():
         evs.sort(key=lambda e: int(e.get("event_sequence", 0) or 0))
@@ -274,15 +281,18 @@ def correlate(events):
                 tokens[current]["cacheCreation"] += _f(e, "cache_creation_tokens")
                 cost[current] += _f(e, "cost_usd")
                 duration[current] += _f(e, "duration_ms")
+            elif name == "internal_error":
+                errors[current] += 1
 
-    return tokens, cost, turns, duration
+    return tokens, cost, turns, duration, errors
 
 
-def publish(tokens, cost, turns, duration):
+def publish(tokens, cost, turns, duration, errors):
     tokens_g.clear()
     cost_g.clear()
     turns_g.clear()
     duration_g.clear()
+    errors_g.clear()
     for skill, type_map in tokens.items():
         for t, v in type_map.items():
             tokens_g.labels(skill=skill, type=t).set(v)
@@ -292,6 +302,8 @@ def publish(tokens, cost, turns, duration):
         turns_g.labels(skill=skill).set(v)
     for skill, v in duration.items():
         duration_g.labels(skill=skill).set(v)
+    for skill, v in errors.items():
+        errors_g.labels(skill=skill).set(v)
 
 
 def main():
@@ -300,8 +312,8 @@ def main():
     while True:
         try:
             events = fetch_events()
-            tokens, cost, turns, duration = correlate(events)
-            publish(tokens, cost, turns, duration)
+            tokens, cost, turns, duration, errors = correlate(events)
+            publish(tokens, cost, turns, duration, errors)
             total_turns = sum(turns.values())
             print(f"updated: {total_turns} turns across {len(turns)} skills — {list(turns.keys())}", flush=True)
         except Exception as exc:
