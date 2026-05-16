@@ -2,7 +2,7 @@
   "title": "Claude Code — Session Explorer",
   "uid": "claude-session",
   "schemaVersion": 39,
-  "version": 1,
+  "version": 2,
   "refresh": "30s",
   "time": { "from": "now-7d", "to": "now" },
   "templating": {
@@ -43,12 +43,24 @@
 
     { "id": 100, "type": "row", "title": "Session summary", "collapsed": false, "gridPos": { "x": 0, "y": 0, "w": 24, "h": 1 } },
 
-    { "id": 1, "type": "stat", "title": "Session",
-      "gridPos": { "x": 0, "y": 1, "w": 12, "h": 3 },
+    { "id": 1, "type": "text", "title": "",
+      "gridPos": { "x": 0, "y": 1, "w": 6, "h": 3 },
+      "options": { "mode": "markdown", "content": "**Session**\n\n`$session_id`" } },
+
+    { "id": 15, "type": "stat", "title": "Project",
+      "description": "From the OTEL resource attribute set by the shell wrapper.",
+      "gridPos": { "x": 6, "y": 1, "w": 3, "h": 3 },
       "datasource": { "type": "prometheus", "uid": "Prometheus" },
-      "targets": [ { "expr": "vector(1)", "refId": "A", "instant": true } ],
-      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "text" }, "mappings": [ { "type": "value", "options": { "1": { "text": "$session_id" } } } ] } },
-      "options": { "graphMode": "none", "colorMode": "none", "textMode": "value", "reduceOptions": { "calc": "lastNotNull", "fields": "", "values": false } } },
+      "targets": [ { "expr": "group by (project) (claude_code_token_usage_tokens_total{session_id=\"$session_id\"})", "refId": "A", "instant": true, "legendFormat": "{{project}}" } ],
+      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "text" }, "noValue": "(unset)" } },
+      "options": { "graphMode": "none", "colorMode": "none", "textMode": "name", "reduceOptions": { "calc": "lastNotNull", "fields": "", "values": false } } },
+
+    { "id": 16, "type": "stat", "title": "Models used",
+      "gridPos": { "x": 9, "y": 1, "w": 3, "h": 3 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [ { "expr": "group by (model) (claude_code_token_usage_tokens_total{session_id=\"$session_id\"})", "refId": "A", "instant": true, "legendFormat": "{{model}}" } ],
+      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "text" } } },
+      "options": { "graphMode": "none", "colorMode": "none", "textMode": "name", "reduceOptions": { "calc": "lastNotNull", "fields": "", "values": true } } },
 
     { "id": 2, "type": "stat", "title": "Total tokens",
       "gridPos": { "x": 12, "y": 1, "w": 4, "h": 3 },
