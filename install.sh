@@ -479,6 +479,38 @@ groups:
         labels:
           severity: warning
           component: cost
+
+      - uid: claudescope-expensive-session
+        title: Expensive single session
+        condition: B
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        data:
+          - refId: A
+            relativeTimeRange: { from: 3600, to: 0 }
+            datasourceUid: Prometheus
+            model:
+              refId: A
+              instant: true
+              expr: max(sum by (session_id) (increase(claude_code_cost_usage_USD_total[1h])))
+          - refId: B
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: threshold
+              expression: A
+              conditions:
+                - type: query
+                  evaluator: { type: gt, params: [5] }
+        annotations:
+          summary: "A single Claude Code session burned over $5 in the last hour"
+          description: |
+            Peak per-session spend in the last hour: {{ $values.A.Value | printf "%.2f" }} USD.
+        labels:
+          severity: warning
+          component: cost
 YAML
 
 cat > "$TARGET_DIR/grafana/dashboards/claude-overview.json" <<'JSON'
