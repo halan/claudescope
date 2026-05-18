@@ -21,7 +21,9 @@ Claude Code ──OTLP/gRPC──▶ OTEL Collector ──▶ Prometheus (metric
 ```bash
 git clone https://github.com/halan/claudescope.git
 cd claudescope
-./install.sh   # creates ./claudescope/, patches ~/.claude/settings.json, starts the stack
+./install.sh   # patches ~/.claude/settings.json and runs `docker compose up -d` here.
+               # Pass a path argument to install into a different directory:
+               #   ./install.sh /opt/claudescope
 ```
 
 Or, if you already cloned and want to run from the checkout:
